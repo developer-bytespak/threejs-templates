@@ -1,5 +1,3 @@
-import { STAGE_RANGES } from './stages.js'
-
 /**
  * Everything that scales with the device. Particle count, arc count and the
  * DPR cap are the three knobs that actually decide frame rate here.
@@ -48,23 +46,8 @@ export function resolveQuality(width, coarsePointer) {
 }
 
 /**
- * How far the subject may sit from centre frame, as a fraction of the
- * half-frame. These are magnitudes only — each camera keyframe supplies the
- * signed direction, so the subject swings away from whichever side the copy
- * occupies in that section.
- *
- * Narrow screens cannot afford a side-by-side split at all, so the horizontal
- * range collapses to zero and the subject simply lifts above the copy.
+ * Total scroll length of the experience. Every visual state is a function of
+ * where the page is inside this track, so the number here is the only thing
+ * deciding how much scrolling each act gets.
  */
-export function resolveComposition(width) {
-  if (width >= 1180) return { x: 0.34, y: 0.3, yBase: 0 }
-  if (width >= 820) return { x: 0.16, y: 0.18, yBase: 0.1 }
-  return { x: 0, y: 0, yBase: 0.3 }
-}
-
-/**
- * Section heights follow their share of the scroll timeline, so a section's
- * copy is on screen for exactly the stretch its visual state occupies.
- */
-export const SECTION_SPANS = Object.values(STAGE_RANGES).map(([a, b]) => b - a)
 export const TRACK_VH = 800

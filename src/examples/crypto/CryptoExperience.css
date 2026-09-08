@@ -1,0 +1,155 @@
+.crypto {
+  --ink: #eef3fb;
+  --faint: rgba(238, 243, 251, 0.14);
+  --ground: #07090d;
+
+  position: relative;
+  background: var(--ground);
+  color: var(--ink);
+}
+
+/* --- the persistent scene ------------------------------------------------ */
+
+.crypto__stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+/* The canvas is transparent, so the background gradient is painted in CSS.
+   It costs nothing and gives the scene a light source to sit inside. With no
+   copy sharing the frame, the light is centred on the subject rather than
+   pushed to the side the text used to leave free. */
+.crypto__glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      58% 46% at 50% 44%,
+      rgba(60, 110, 200, 0.24) 0%,
+      rgba(28, 52, 110, 0.11) 42%,
+      transparent 72%
+    ),
+    radial-gradient(
+      70% 60% at 18% 88%,
+      rgba(96, 78, 200, 0.12) 0%,
+      transparent 66%
+    ),
+    linear-gradient(180deg, #090b11 0%, #07090d 55%, #05060a 100%);
+}
+
+/* R3F puts this class on its wrapper, so the canvas itself is targeted
+   separately below. */
+.crypto__canvas {
+  position: relative;
+  opacity: 0;
+  transition: opacity 1.1s ease;
+}
+
+.crypto__canvas[data-ready='true'] {
+  opacity: 1;
+}
+
+.crypto__stage canvas {
+  display: block;
+  /* Vertical panning must still reach the page while the finger is over the
+     canvas, or the whole experience becomes unscrollable on touch. */
+  touch-action: pan-y;
+}
+
+.crypto__loader {
+  position: fixed;
+  z-index: 2;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  width: 34px;
+  height: 1px;
+  background: var(--faint);
+  opacity: 1;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+
+.crypto__loader span {
+  display: block;
+  width: 40%;
+  height: 100%;
+  background: #9fc4ff;
+  animation: crypto-load 1.15s ease-in-out infinite;
+}
+
+.crypto__loader[data-hidden='true'] {
+  opacity: 0;
+}
+
+@keyframes crypto-load {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+
+/* --- scroll track --------------------------------------------------------- */
+
+/* Empty by design: it exists only to give the page the height the scene reads
+   its progress from. Height comes from TRACK_VH in quality.js. */
+.crypto__track {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* --- progress ------------------------------------------------------------- */
+
+/* One continuous bar, not a step indicator: the scene morphs the whole way
+   down, so the readout should be continuous too. */
+.crypto__progress {
+  position: fixed;
+  z-index: 2;
+  right: clamp(14px, 2.2vw, 34px);
+  top: 50%;
+  translate: 0 -50%;
+  width: 2px;
+  height: clamp(120px, 26vh, 260px);
+  border-radius: 2px;
+  background: rgba(238, 243, 251, 0.16);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.crypto__progress-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(180deg, #cfe4ff 0%, #9fc4ff 100%);
+  transform: scaleY(0);
+  transform-origin: top;
+  /* Short enough to still feel attached to the wheel, long enough to smooth
+     the discrete jump a wheel notch produces. */
+  transition: transform 0.12s linear;
+}
+
+/* --- narrow screens ------------------------------------------------------- */
+
+@media (max-width: 819px) {
+  .crypto__progress {
+    right: 10px;
+    height: clamp(96px, 22vh, 180px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crypto__canvas,
+  .crypto__loader {
+    transition-duration: 0.01ms;
+    transition-delay: 0ms;
+  }
+
+  .crypto__progress-fill {
+    transition: none;
+  }
+
+  .crypto__loader span {
+    animation: none;
+  }
+}

@@ -14,7 +14,7 @@ import Blocks from './Blocks.jsx'
 import GlobeLayer from './GlobeLayer.jsx'
 import CryptoCamera from './CryptoCamera.jsx'
 
-function CryptoScene({ input, quality, composition, reducedMotion }) {
+function CryptoScene({ input, quality, reducedMotion }) {
   // Scene state lives here, and only this component writes it. Children
   // receive it read-only, which keeps a single source of truth for what the
   // scene is currently showing.
@@ -114,7 +114,6 @@ function CryptoScene({ input, quality, composition, reducedMotion }) {
       <CryptoCamera
         stage={stage}
         input={input}
-        composition={composition}
         reducedMotion={reducedMotion}
       />
 

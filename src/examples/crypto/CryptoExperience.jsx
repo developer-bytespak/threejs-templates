@@ -2,10 +2,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { PerformanceMonitor } from '@react-three/drei'
 import CryptoScene from './CryptoScene.jsx'
-import CryptoSections from './CryptoSections.jsx'
-import { SECTIONS } from './sections.js'
-import { STAGE_RANGES } from './stages.js'
-import { resolveComposition, resolveQuality } from './quality.js'
+import { resolveQuality, TRACK_VH } from './quality.js'
 import './CryptoExperience.css'
 
 function usePrefersReducedMotion() {
@@ -25,15 +22,6 @@ function usePrefersReducedMotion() {
   return reduced
 }
 
-const RANGE_LIST = Object.values(STAGE_RANGES)
-
-function sectionIndexFor(progress) {
-  for (let i = RANGE_LIST.length - 1; i >= 0; i -= 1) {
-    if (progress >= RANGE_LIST[i][0]) return i
-  }
-  return 0
-}
-
 function measure() {
   return {
     width: window.innerWidth,
@@ -44,7 +32,6 @@ function measure() {
 function CryptoExperience() {
   const reducedMotion = usePrefersReducedMotion()
   const [device, setDevice] = useState(measure)
-  const [active, setActive] = useState(0)
   const [ready, setReady] = useState(false)
   const [throttled, setThrottled] = useState(false)
 
@@ -57,13 +44,13 @@ function CryptoExperience() {
     pointerActive: false,
   })
 
+  // The progress bar is written the same way — straight to the element — so a
+  // continuous scroll never costs a render.
+  const bar = useRef(null)
+
   const quality = useMemo(
     () => resolveQuality(device.width, device.coarse),
     [device.width, device.coarse],
-  )
-  const composition = useMemo(
-    () => resolveComposition(device.width),
-    [device.width],
   )
 
   useEffect(() => {
@@ -71,22 +58,20 @@ function CryptoExperience() {
       const scrollable = document.documentElement.scrollHeight - innerHeight
       const progress = scrollable > 0 ? scrollY / scrollable : 0
       input.current.progress = progress
-      setActive(sectionIndexFor(progress))
+      if (bar.current) bar.current.style.transform = `scaleY(${progress})`
     }
 
     const onResize = () => {
       const next = measure()
-      // Re-render only when the tier or the composition would actually
-      // change. Rebuilding the particle buffers on every resize frame would
-      // stall the main thread, and the camera framing would jump with it.
-      setDevice((current) => {
-        const sameTier =
-          resolveQuality(current.width, current.coarse).tier ===
-          resolveQuality(next.width, next.coarse).tier
-        const sameShift =
-          resolveComposition(current.width).x === resolveComposition(next.width).x
-        return sameTier && sameShift ? current : next
-      })
+      // Re-render only when the quality tier would actually change. Rebuilding
+      // the particle buffers on every resize frame would stall the main
+      // thread for no visible gain.
+      setDevice((current) =>
+        resolveQuality(current.width, current.coarse).tier ===
+        resolveQuality(next.width, next.coarse).tier
+          ? current
+          : next,
+      )
       onScroll()
     }
 
@@ -123,16 +108,8 @@ function CryptoExperience() {
     }
   }, [])
 
-  const scrollToSection = (index) => {
-    const scrollable = document.documentElement.scrollHeight - innerHeight
-    scrollTo({
-      top: RANGE_LIST[index][0] * scrollable,
-      behavior: reducedMotion ? 'auto' : 'smooth',
-    })
-  }
-
   return (
-    <div className="crypto" data-layout={SECTIONS[active].layout}>
+    <div className="crypto">
       <div className="crypto__stage">
         <div className="crypto__glow" aria-hidden="true" />
         <Canvas
@@ -152,7 +129,6 @@ function CryptoExperience() {
             <CryptoScene
               input={input}
               quality={quality}
-              composition={composition}
               reducedMotion={reducedMotion}
             />
           </Suspense>
@@ -163,25 +139,17 @@ function CryptoExperience() {
         <span />
       </div>
 
-      <CryptoSections
-        active={active}
-        quality={quality}
-        onNavigate={scrollToSection}
+      {/* Nothing but height: this is the scroll the whole scene is a function
+          of, so the page is scrollable with no copy on it. */}
+      <div
+        className="crypto__track"
+        style={{ height: `${TRACK_VH}vh` }}
+        aria-hidden="true"
       />
 
-      <nav className="crypto__rail" aria-label="Sections">
-        {SECTIONS.map((section, index) => (
-          <button
-            key={section.id}
-            type="button"
-            className="crypto__dot"
-            data-active={index === active}
-            aria-label={section.eyebrow}
-            aria-current={index === active}
-            onClick={() => scrollToSection(index)}
-          />
-        ))}
-      </nav>
+      <div className="crypto__progress" aria-hidden="true">
+        <span className="crypto__progress-fill" ref={bar} />
+      </div>
     </div>
   )
 }

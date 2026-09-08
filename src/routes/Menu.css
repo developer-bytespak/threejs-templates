@@ -148,8 +148,9 @@
   transition: transform 0.25s ease;
 }
 
+/* The arrow points out of the frame, so it leaves in that direction. */
 .card:hover .card__cta svg {
-  transform: translateX(3px);
+  transform: translate(2px, -2px);
 }
 
 @media (prefers-reduced-motion: reduce) {

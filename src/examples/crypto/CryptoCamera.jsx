@@ -13,29 +13,25 @@ const PARALLAX_REACH = 0.34
 const DRIFT_REACH = 0.045
 
 /**
- * The rail the camera runs on, with one keyframe near the middle of each
- * scroll section so the framing has settled while that section's copy is on
- * screen.
- *
- * `shiftX` and `shiftY` are signed multipliers on the composition magnitude:
- * positive X pushes the subject right (copy on the left), negative pushes it
- * left (copy on the right), zero centres it, and positive Y lifts it clear of
- * copy sitting low in the frame.
+ * The rail the camera runs on, with one keyframe per act of the scroll so the
+ * framing has settled by the time each visual state is fully formed. The
+ * subject stays centred throughout — the storytelling is in the distance and
+ * the angle, not in where the subject sits in the frame.
  */
 const SHOTS = [
-  // 01 sphere — copy left, subject right.
-  { at: 0.0, position: [0.0, 0.35, 9.2], fov: 42, shiftX: 1.0, shiftY: 0 },
-  { at: 0.09, position: [0.35, 0.2, 8.7], fov: 41, shiftX: 1.0, shiftY: 0 },
-  // 02 transactions — copy right, subject swings left and closer.
-  { at: 0.235, position: [0.5, 0.1, 7.5], fov: 40, shiftX: -0.95, shiftY: 0 },
-  // 03 decentralized — copy centred inside the opening cloud.
-  { at: 0.4, position: [-2.4, 1.5, 9.6], fov: 46, shiftX: 0, shiftY: 0.05 },
-  // 04 blockchain — copy low left, chain lifted above it.
-  { at: 0.58, position: [4.6, 1.7, 7.4], fov: 36, shiftX: 0.16, shiftY: 0.55 },
-  // 05 global — copy right, globe left.
-  { at: 0.76, position: [-0.9, 0.9, 8.4], fov: 40, shiftX: -0.95, shiftY: 0 },
-  // 06 final — globe centred and raised, copy centred beneath it.
-  { at: 1.0, position: [0.0, 0.3, 11.0], fov: 38, shiftX: 0, shiftY: 0.9 },
+  // 01 sphere — wide, level, the whole system in view.
+  { at: 0.0, position: [0.0, 0.35, 9.2], fov: 42 },
+  { at: 0.09, position: [0.35, 0.2, 8.7], fov: 41 },
+  // 02 transactions — closer, so the arcs read individually.
+  { at: 0.235, position: [0.5, 0.1, 7.5], fov: 40 },
+  // 03 separation — a slow arc around the opening cloud.
+  { at: 0.4, position: [-2.4, 1.5, 9.6], fov: 46 },
+  // 04 blockchain — long lens, three-quarter view down the chain.
+  { at: 0.58, position: [4.6, 1.7, 7.4], fov: 36 },
+  // 05 globe — swings back through centre as the sphere reforms.
+  { at: 0.76, position: [-0.9, 0.9, 8.4], fov: 40 },
+  // 06 final — pull back and let it settle.
+  { at: 1.0, position: [0.0, 0.3, 11.0], fov: 38 },
 ]
 
 /** Where the camera sits when motion is reduced: one calm, wide framing. */
@@ -51,7 +47,7 @@ function easeInOutCubic(t) {
  * a pull back for the globe. Every position is derived from scroll progress
  * and then damped, so reversing the scroll retraces the same path.
  */
-function CryptoCamera({ stage, input, composition, reducedMotion }) {
+function CryptoCamera({ stage, input, reducedMotion }) {
   const keyframes = useMemo(
     () =>
       SHOTS.map((shot) => ({
@@ -104,22 +100,9 @@ function CryptoCamera({ stage, input, composition, reducedMotion }) {
         Math.min(2.2, Math.pow(1 / aspect, 0.55)),
       )
     }
-    const shiftX = THREE.MathUtils.lerp(from.shiftX, to.shiftX, local)
-    const shiftY = THREE.MathUtils.lerp(from.shiftY, to.shiftY, local)
-
-    // Composition: looking to one side of the subject pushes it to the other
-    // side of frame, which is what leaves room for the copy.
-    //
-    // The offset is scaled by distance and field of view, so it is a constant
-    // fraction of the frame rather than a fixed distance in the world — a
-    // fixed offset throws the subject off-screen as soon as the camera moves
-    // in for a closer state.
-    const halfHeight = Math.tan((fov * Math.PI) / 360) * scratch.position.length()
-    scratch.target.set(
-      -composition.x * shiftX * halfHeight * aspect,
-      -(composition.yBase + composition.y * shiftY) * halfHeight,
-      0,
-    )
+    // Nothing else shares the frame, so the camera simply holds the subject
+    // at centre and the composition is the same on every viewport.
+    scratch.target.set(0, 0, 0)
 
     if (reducedMotion) {
       // Keep the scroll-driven states, but pull most of the camera travel out

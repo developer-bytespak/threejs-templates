@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { EXAMPLES } from '../examples.js'
+import { EXAMPLES } from '../examples/registry.js'
 import './Menu.css'
 
 function Menu() {
@@ -9,16 +9,22 @@ function Menu() {
         <p className="menu__eyebrow">Three.js</p>
         <h1 className="menu__title">Examples</h1>
         <p className="menu__lede">
-          Scenes built with React Three Fiber. Pick one to open it.
+          Scenes built with React Three Fiber. Each one opens in a new tab.
         </p>
       </header>
 
       <ul className="menu__grid">
         {EXAMPLES.map((example) => (
           <li key={example.id}>
+            {/* Each example takes over the whole window and runs its own
+                scroll, so it gets its own tab rather than replacing the menu.
+                react-router leaves a Link with an explicit target to the
+                browser, which is exactly what a new tab needs. */}
             <Link
               className="card"
               to={example.path}
+              target="_blank"
+              rel="noreferrer"
               style={{ '--accent': example.accent }}
             >
               <div className="card__frame">
@@ -46,10 +52,12 @@ function Menu() {
                 </ul>
 
                 <span className="card__cta">
-                  Open
+                  Open in new tab
+                  {/* The arrow leaves the frame, so the destination reads as
+                      elsewhere before the click rather than after it. */}
                   <svg viewBox="0 0 16 16" aria-hidden="true">
                     <path
-                      d="M3 8h9M8.5 4l4 4-4 4"
+                      d="M6 10l5-5M6.5 4.5H11.5V9.5"
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="1.5"

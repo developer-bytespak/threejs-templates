@@ -1,6 +1,10 @@
 /**
- * The registry behind the menu at "/". Adding an example means adding an
- * entry here and a route in App.jsx — the menu builds itself from this list.
+ * The registry behind the menu at "/". Each example lives in its own folder
+ * beside this file and owns everything it needs — components, styles and
+ * helpers — so nothing is shared between them by accident.
+ *
+ * Adding one means creating that folder, adding an entry here and adding a
+ * route in App.jsx; the menu builds itself from this list.
  */
 export const EXAMPLES = [
   {

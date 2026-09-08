@@ -1,0 +1,50 @@
+.back {
+  position: fixed;
+  z-index: 3;
+  top: clamp(16px, 3vh, 26px);
+  left: clamp(16px, 3vw, 28px);
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 15px 8px 12px;
+  border: 1px solid rgba(243, 245, 251, 0.18);
+  border-radius: 999px;
+  background: rgba(10, 12, 18, 0.45);
+  backdrop-filter: blur(10px);
+  color: rgba(243, 245, 251, 0.78);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease;
+}
+
+.back:hover,
+.back:focus-visible {
+  border-color: rgba(243, 245, 251, 0.4);
+  background: rgba(10, 12, 18, 0.7);
+  color: #f3f5fb;
+}
+
+.back svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.25s ease;
+}
+
+.back:hover svg {
+  transform: translateX(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .back,
+  .back svg {
+    transition: none;
+  }
+
+  .back:hover svg {
+    transform: none;
+  }
+}

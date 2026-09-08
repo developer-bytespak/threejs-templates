@@ -1,0 +1,142 @@
+{
+  "model": "office_room.glb",
+  "units": "metres, Y-up",
+  "camera": {
+    "position": [
+      0.42,
+      1.4,
+      0.86
+    ],
+    "lookAt": [
+      -0.0709,
+      1.188,
+      -0.9027
+    ],
+    "fov_vertical_deg": 33.64,
+    "fov_horizontal_deg": 73.74,
+    "aspect": 2.4811,
+    "resolution": [
+      1836,
+      740
+    ],
+    "blender": {
+      "lens_mm": 24.0,
+      "sensor_mm": 36.0
+    }
+  },
+  "shot_for_shots_js": {
+    "id": "desk",
+    "aim": "Figure",
+    "lift": 0,
+    "from": [
+      0.722,
+      0.75,
+      1.52
+    ],
+    "fov": 34
+  },
+  "figure_centre": [
+    -0.302,
+    0.6501,
+    -0.6597
+  ],
+  "groups": [
+    "Floor",
+    "Ceiling",
+    "Walls",
+    "Window",
+    "Skyline",
+    "Pinboard",
+    "Desk",
+    "Chair",
+    "Desktop",
+    "Bin",
+    "Credenza",
+    "Plant",
+    "Figure",
+    "Outline"
+  ],
+  "note_outline": "Grp_Outline meshes are inverted-hull shells for the toon edge. Hide them for plain PBR, or render with THREE.BackSide.",
+  "palette": {
+    "NPR_Blouse": {
+      "lit": "#EFECE4",
+      "shadow": "#3A63CE"
+    },
+    "NPR_Board": {
+      "lit": "#C9C5B9",
+      "shadow": "#5E7BB5"
+    },
+    "NPR_Ceiling": {
+      "lit": "#122A73",
+      "shadow": "#122A73"
+    },
+    "NPR_Chair": {
+      "lit": "#DEDACF",
+      "shadow": "#1B3FA0"
+    },
+    "NPR_City": {
+      "lit": "#9DB6CC",
+      "shadow": "#9DB6CC"
+    },
+    "NPR_Cloud": {
+      "lit": "#DEDACF",
+      "shadow": "#DEDACF"
+    },
+    "NPR_Floor": {
+      "lit": "#1B3FA0",
+      "shadow": "#122A73"
+    },
+    "NPR_Furn": {
+      "lit": "#2E5BC8",
+      "shadow": "#122A73"
+    },
+    "NPR_Hair": {
+      "lit": "#1E357A",
+      "shadow": "#080F33"
+    },
+    "NPR_Metal": {
+      "lit": "#DEDACF",
+      "shadow": "#122A73"
+    },
+    "NPR_Outline": {
+      "lit": "#0A1740",
+      "shadow": "#0A1740"
+    },
+    "NPR_Paper": {
+      "lit": "#DEDACF",
+      "shadow": "#C6C3BA"
+    },
+    "NPR_Plant": {
+      "lit": "#2E5BC8",
+      "shadow": "#122A73"
+    },
+    "NPR_Shoes": {
+      "lit": "#1B2E70",
+      "shadow": "#080F33"
+    },
+    "NPR_Skin": {
+      "lit": "#DEDACF",
+      "shadow": "#1B3FA0"
+    },
+    "NPR_Sky": {
+      "lit": "#C4D8E3",
+      "shadow": "#C4D8E3"
+    },
+    "NPR_Tower": {
+      "lit": "#5E7BB5",
+      "shadow": "#5E7BB5"
+    },
+    "NPR_Trousers": {
+      "lit": "#3E63BE",
+      "shadow": "#14245E"
+    },
+    "NPR_Wall": {
+      "lit": "#2E5BC8",
+      "shadow": "#1B3FA0"
+    },
+    "NPR_Wood": {
+      "lit": "#DEDACF",
+      "shadow": "#1B3FA0"
+    }
+  }
+}

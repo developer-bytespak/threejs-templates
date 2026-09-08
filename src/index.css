@@ -1,0 +1,32 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Inside an example the scene is the interface, so a scrollbar would sit on
+   top of it. Scrolling itself is untouched — only the indicator is hidden,
+   and only there: on the menu a scrollbar is a useful affordance. */
+html[data-immersive] {
+  scrollbar-width: none;
+}
+
+html[data-immersive]::-webkit-scrollbar {
+  display: none;
+}
+
+body {
+  margin: 0;
+  background: #0e1017;
+  color: #f3f5fb;
+  overscroll-behavior-y: none;
+}

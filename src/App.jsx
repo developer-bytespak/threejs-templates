@@ -6,7 +6,10 @@ import ExampleFrame from './routes/ExampleFrame.jsx'
 // Each example owns a folder under examples/ and is split out here so the
 // menu does not pull three.js down with it.
 const Construction = lazy(() =>
-  import('./examples/construction/RoomViewer.jsx'),
+  import('./examples/construction/ConstructionExperience.jsx'),
+)
+const ConstructionTwo = lazy(() =>
+  import('./examples/construction-two/RoomViewer.jsx'),
 )
 const Crypto = lazy(() => import('./examples/crypto/CryptoExperience.jsx'))
 
@@ -20,6 +23,16 @@ function App() {
           <ExampleFrame title="Construction">
             <Suspense fallback={null}>
               <Construction />
+            </Suspense>
+          </ExampleFrame>
+        }
+      />
+      <Route
+        path="/construction-two"
+        element={
+          <ExampleFrame title="Construction Two">
+            <Suspense fallback={null}>
+              <ConstructionTwo />
             </Suspense>
           </ExampleFrame>
         }

@@ -54,6 +54,39 @@ function orderedEdges(geometry) {
 }
 
 /**
+ * Advances one piece to its state at `local` (0 before it starts, 1 once it is
+ * finished). Kept out of the component because these are three.js objects the
+ * render loop owns and writes every frame, not React state.
+ */
+function stepPiece(piece, local, reducedMotion) {
+  // Reduced motion gets the finished model rather than a moving one.
+  const wire = reducedMotion ? (local > 0 ? 1 : 0) : clamp01(local / WIRE_END)
+  const solid = reducedMotion
+    ? local > 0
+      ? 1
+      : 0
+    : easeOutCubic(clamp01((local - SOLID_START) / (1 - SOLID_START)))
+
+  piece.wireframe.visible = wire > 0
+  if (wire > 0) {
+    // Two vertices per segment, and the count has to stay even.
+    const shown = Math.max(1, Math.round(piece.segmentCount * wire))
+    piece.wireframe.geometry.setDrawRange(0, shown * 2)
+  }
+
+  piece.mesh.visible = solid > 0
+  if (solid > 0) {
+    piece.mesh.scale.y = solid
+    // Pin the underside in place so the volume rises out of the piece below it
+    // instead of expanding around its own centre.
+    piece.mesh.position.y = piece.footY + (piece.height * solid) / 2
+  } else {
+    piece.mesh.scale.y = 1
+    piece.mesh.position.y = piece.restY
+  }
+}
+
+/**
  * The study model on the desk, assembled by scroll position.
  *
  * Each piece gets its own slice of BUILD_RANGE, offset from the last so they
@@ -118,31 +151,11 @@ function Building({ input, reducedMotion }) {
     const progress = input.current.progress
 
     for (const piece of pieces) {
-      const local = clamp01((progress - piece.start) / piece.duration)
-
-      // Reduced motion gets the finished model rather than a moving one.
-      const wire = reducedMotion ? (local > 0 ? 1 : 0) : clamp01(local / WIRE_END)
-      const solid = reducedMotion
-        ? (local > 0 ? 1 : 0)
-        : easeOutCubic(clamp01((local - SOLID_START) / (1 - SOLID_START)))
-
-      piece.wireframe.visible = wire > 0
-      if (wire > 0) {
-        // Two vertices per segment, and the count has to stay even.
-        const shown = Math.max(1, Math.round(piece.segmentCount * wire))
-        piece.wireframe.geometry.setDrawRange(0, shown * 2)
-      }
-
-      piece.mesh.visible = solid > 0
-      if (solid > 0) {
-        piece.mesh.scale.y = solid
-        // Pin the underside in place so the volume rises out of the piece
-        // below it instead of expanding around its own centre.
-        piece.mesh.position.y = piece.footY + (piece.height * solid) / 2
-      } else {
-        piece.mesh.scale.y = 1
-        piece.mesh.position.y = piece.restY
-      }
+      stepPiece(
+        piece,
+        clamp01((progress - piece.start) / piece.duration),
+        reducedMotion,
+      )
     }
   })
 

@@ -1,0 +1,177 @@
+.construction {
+  --ink: #eceff4;
+  --faint: rgba(236, 239, 244, 0.14);
+  --ground: #070809;
+
+  position: relative;
+  background: var(--ground);
+  color: var(--ink);
+}
+
+/* --- the persistent scene ------------------------------------------------ */
+
+.construction__stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+/* The canvas is transparent, so the backdrop is painted in CSS. It costs
+   nothing, and a faint pool of light behind the building does more for depth
+   than any amount of extra geometry would. */
+.construction__backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      62% 52% at 50% 38%,
+      rgba(78, 96, 126, 0.2) 0%,
+      rgba(30, 38, 54, 0.09) 44%,
+      transparent 74%
+    ),
+    radial-gradient(
+      90% 60% at 50% 104%,
+      rgba(120, 132, 158, 0.09) 0%,
+      transparent 62%
+    ),
+    linear-gradient(180deg, #080a0d 0%, #070809 58%, #050607 100%);
+}
+
+/* Holds the eye in the middle of the frame. Cheaper and calmer than a
+   post-processing vignette, and the project ships no postprocessing. */
+.construction__vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    72% 68% at 50% 48%,
+    transparent 52%,
+    rgba(3, 4, 6, 0.5) 100%
+  );
+}
+
+/* R3F puts its class on the wrapper, so the canvas itself is targeted below. */
+.construction__canvas {
+  position: relative;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+
+.construction__canvas[data-ready='true'] {
+  opacity: 1;
+}
+
+.construction__stage canvas {
+  display: block;
+  /* Vertical panning must still reach the page while the finger is over the
+     canvas, or the whole experience becomes unscrollable on touch. */
+  touch-action: pan-y;
+}
+
+/* The only cursor affordance: the building is pickable, so say so. */
+.construction__stage[data-hover='true'] canvas {
+  cursor: pointer;
+}
+
+/* --- loading -------------------------------------------------------------- */
+
+.construction__loader {
+  position: fixed;
+  z-index: 2;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  width: 46px;
+  height: 1px;
+  background: var(--faint);
+  opacity: 1;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+
+.construction__loader span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #cfe0ff;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.construction__loader[data-hidden='true'] {
+  opacity: 0;
+}
+
+/* --- scroll track --------------------------------------------------------- */
+
+.construction__content {
+  position: relative;
+  z-index: 1;
+  /* The scene must stay reachable by the pointer for hover and parallax; only
+     content added later should re-enable hit testing on itself. */
+  pointer-events: none;
+}
+
+/* Intentionally empty. These exist to give the choreography distance, and are
+   ready to hold content without the scene changing. */
+.construction-scroll-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.construction-scroll-stage__slot {
+  width: min(100%, 1180px);
+  margin: 0 auto;
+  padding: 0 clamp(20px, 5vw, 56px);
+}
+
+/* --- progress ------------------------------------------------------------- */
+
+.construction__progress {
+  position: fixed;
+  z-index: 2;
+  right: clamp(14px, 2.2vw, 34px);
+  top: 50%;
+  translate: 0 -50%;
+  width: 2px;
+  height: clamp(120px, 26vh, 260px);
+  border-radius: 2px;
+  background: rgba(236, 239, 244, 0.15);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.construction__progress-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(180deg, #e6eefc 0%, #9fb4d8 100%);
+  transform: scaleY(0);
+  transform-origin: top;
+  /* Short enough to stay attached to the wheel, long enough to smooth the
+     discrete jump a wheel notch produces. */
+  transition: transform 0.12s linear;
+}
+
+@media (max-width: 819px) {
+  .construction__progress {
+    right: 10px;
+    height: clamp(96px, 22vh, 180px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .construction__canvas,
+  .construction__loader {
+    transition-duration: 0.01ms;
+    transition-delay: 0ms;
+  }
+
+  .construction__progress-fill,
+  .construction__loader span {
+    transition: none;
+  }
+}

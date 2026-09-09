@@ -40,4 +40,15 @@ export const EXAMPLES = [
     poster: '/previews/crypto.jpg',
     accent: '#07090d',
   },
+  {
+    id: 'education',
+    path: '/education',
+    title: 'Bytes College',
+    tagline: 'The Knowledge Tree',
+    description:
+      'An eight-chapter journey through one continuous shot: a seed opens, roots and trunk grow along a shader reveal front, five discipline branches fill the canopy, and a miniature campus hidden inside the foliage is finally reached.',
+    tags: ['Three GLBs', 'Shader growth', 'Camera path', 'Occluded typography'],
+    poster: '/previews/education.jpg',
+    accent: '#06080b',
+  },
 ]

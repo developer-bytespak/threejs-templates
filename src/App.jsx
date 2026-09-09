@@ -12,6 +12,9 @@ const ConstructionTwo = lazy(() =>
   import('./examples/construction-two/RoomViewer.jsx'),
 )
 const Crypto = lazy(() => import('./examples/crypto/CryptoExperience.jsx'))
+const Education = lazy(() =>
+  import('./examples/education/EducationExperience.jsx'),
+)
 
 function App() {
   return (
@@ -43,6 +46,16 @@ function App() {
           <ExampleFrame title="Crypto Network">
             <Suspense fallback={null}>
               <Crypto />
+            </Suspense>
+          </ExampleFrame>
+        }
+      />
+      <Route
+        path="/education"
+        element={
+          <ExampleFrame title="Bytes College">
+            <Suspense fallback={null}>
+              <Education />
             </Suspense>
           </ExampleFrame>
         }

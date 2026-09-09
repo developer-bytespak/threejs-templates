@@ -125,7 +125,7 @@ function KnowledgeTree({ rig, stage, quality, interactive, onHoverDiscipline }) 
       // a heavy dither speckle across the canopy that reads as screen noise;
       // retracting removes whole leaves and keeps the inner ones framing the
       // shot, which is what the branches are there for.
-      if (driver.key === 'leafReveal') weight *= 1 - s.canopyClear * 0.3
+      if (driver.key === 'leafReveal') weight *= 1 - s.canopyClear * 0.45
 
       setReveal(
         driver.materials,

@@ -3,7 +3,7 @@
   --muted: rgba(242, 239, 233, 0.56);
   --faint: rgba(242, 239, 233, 0.13);
   --ember: #ffab5c;
-  --ground: #06080b;
+  --ground: #080b10;
 
   position: relative;
   color: var(--ink);
@@ -23,20 +23,22 @@
   position: fixed;
   inset: 0;
   z-index: -1;
+  /* A brighter pool behind where the subject sits gives dark silhouettes
+     something to read against. Kept desaturated so it does not turn blue. */
   background:
     radial-gradient(
-      64% 48% at 58% 38%,
-      rgba(58, 74, 104, 0.2) 0%,
-      rgba(20, 26, 38, 0.1) 44%,
-      transparent 74%
+      58% 46% at 56% 40%,
+      rgba(96, 116, 148, 0.26) 0%,
+      rgba(38, 48, 64, 0.14) 46%,
+      transparent 76%
     ),
     radial-gradient(
       80% 60% at 20% 92%,
-      rgba(120, 78, 40, 0.12) 0%,
+      rgba(126, 86, 48, 0.13) 0%,
       transparent 62%
     ),
-    linear-gradient(180deg, #080a0e 0%, #06080b 52%, #04050700 100%),
-    #06080b;
+    linear-gradient(180deg, #0c1016 0%, #080b10 54%, #06080c 100%),
+    #080b10;
 }
 
 .edu__stage {
@@ -480,7 +482,6 @@
 
 .edu-split {
   position: absolute;
-  top: 50%;
   translate: 0 -50%;
   margin: 0;
   font-size: clamp(2.6rem, 8.5vw, 9rem);
@@ -491,15 +492,19 @@
   color: rgba(246, 242, 234, 0.88);
 }
 
-/* Each hangs off its own edge so the camera flies through the gap between. */
+/* Each hangs off its own edge so the camera flies through the gap between.
+   They also sit in different vertical bands: stacked at the same height, the
+   second one lands behind the tree, which occupies the right of this frame. */
 .edu-split--left {
   left: -1vw;
+  top: 42%;
   width: 42vw;
   white-space: normal;
 }
 
 .edu-split--right {
-  right: -1vw;
+  right: 2vw;
+  top: 78%;
   text-align: right;
 }
 

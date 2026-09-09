@@ -3,6 +3,7 @@ import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { CAMPUS_BUILDINGS, DISCIPLINES } from './chapters.js'
 import { attachReveal } from './revealMaterial.js'
+import { tuneMaterial } from './materials.js'
 
 export const MODEL_URLS = {
   tree: '/models/education/knowledge_tree_core.glb',
@@ -56,6 +57,8 @@ function rigGroup(root, mode, options) {
     let clone = seen.get(source)
     if (!clone) {
       clone = source.clone()
+      // Corrections first, so the reveal shader wraps the tuned material.
+      tuneMaterial(clone)
       attachReveal(clone, mode, options)
       seen.set(source, clone)
       materials.push(clone)

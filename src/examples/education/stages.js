@@ -44,11 +44,11 @@ export function deriveStage(progress, target = {}) {
   target.rootGrowth = ramp(p, 0.05, 0.15)
   target.trunkGrowth = ramp(p, 0.1, 0.21)
   target.branchGrowth = ramp(p, 0.19, 0.33)
-  target.leafReveal = ramp(p, 0.21, 0.35)
+  target.leafReveal = ramp(p, 0.19, 0.31)
   target.veinFlow = ramp(p, 0.08, 0.3)
 
   // --- the artifacts ------------------------------------------------------
-  target.artifactReveal = ramp(p, 0.34, 0.46)
+  target.artifactReveal = ramp(p, 0.2, 0.3)
   target.museumProgress = span(p, 0.39, 0.58)
   // Deep in the canopy there is nothing to light the artifacts by, so the
   // museum carries its own travelling fill.
@@ -64,12 +64,16 @@ export function deriveStage(progress, target = {}) {
   // Kept fully invisible until the approach begins. The campus geometry sits
   // physically inside the canopy, so anything above zero here can be glimpsed
   // through gaps in the leaves from a long way off.
-  target.campusVisibility = ramp(p, 0.665, 0.73)
+  // A short dissolve, not a long one. The campus still cannot be seen before
+  // the approach, but the reveal itself is carried by the camera coming
+  // through the foliage and the windows coming on — a slow opacity ramp just
+  // leaves dither speckle across the architecture for the whole chapter.
+  target.campusVisibility = ramp(p, 0.655, 0.688)
   target.campusReveal = ramp(p, 0.73, 0.86)
-  target.campusLights = ramp(p, 0.69, 0.84)
+  target.campusLights = ramp(p, 0.665, 0.8)
   // Once the camera is through, the leaves have done their job. Thinning them
   // is the difference between arriving somewhere and peering through a hedge.
-  target.canopyClear = ramp(p, 0.77, 0.88)
+  target.canopyClear = ramp(p, 0.74, 0.85)
 
   // --- atmosphere and light ------------------------------------------------
   // Cool and dark through the canopy, warming as the clearing opens.

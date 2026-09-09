@@ -1,131 +1,160 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { createLightingState, resolveLighting } from './lightingStates.js'
 
-const COOL = new THREE.Color('#7d9dc4')
-const WARM = new THREE.Color('#ffb672')
-const FOG_COOL = new THREE.Color('#06080b')
-const FOG_WARM = new THREE.Color('#100c0c')
+const FOG_COOL = new THREE.Color('#080b10')
+const FOG_WARM = new THREE.Color('#120e0c')
+
+/** Radius the rig orbits at, well outside the canopy. */
+const RIG_RADIUS = 30
+/** How far the key leads the camera's azimuth, in radians. */
+const KEY_LEAD = 0.85
 
 /**
- * The lighting journey.
+ * A studio rig for a subject the camera walks all the way around.
  *
- * The scene starts almost unlit — one warm ember inside the seed and barely
- * enough ambient to find the silhouette — and opens out as the tree grows.
- * Through the canopy it stays cool and deep; as the clearing opens it turns
- * over to warm architectural light. Fog does most of the depth work: pulling
- * it in tight during the canopy chapters is what hides the campus without
- * hiding it, and pushing it back at the reveal is most of the payoff.
+ * The bark is nearly black, so a single fixed key leaves half the orbit as an
+ * unreadable silhouette. This keeps the classic three-point relationship —
+ * key, cool fill opposite, cool rim behind — but rotates the whole rig to hold
+ * a fixed relationship with the camera's azimuth, heavily damped so it reads
+ * as light in a room rather than as a lamp bolted to the lens. On top of that
+ * sits a soft fill at the camera itself, which is what stops whatever the
+ * camera has travelled to look at from going black inside the canopy, where
+ * nothing else reaches.
+ *
+ * Intensities, fog and tone-mapping exposure interpolate between the chapter
+ * states in lightingStates.js. No light is created after mount.
  */
 function EducationLighting({ stage, rig }) {
   const refs = useRef({
+    hemi: null,
     key: null,
     fill: null,
-    ambient: null,
-    seedLight: null,
-    campusLight: null,
-    colour: new THREE.Color(),
+    rim: null,
+    camFill: null,
+    seedKey: null,
+    seedEmber: null,
+    campus: null,
+    azimuth: 0,
+    started: false,
+    state: createLightingState(),
+    camDir: new THREE.Vector3(),
   }).current
 
   const seedPosition = useMemo(
-    () => rig.seedCentre.clone().add(new THREE.Vector3(0, 0.25, 0)),
+    () => rig.seedCentre.clone().add(new THREE.Vector3(0, 0.2, 0)),
     [rig.seedCentre],
   )
   const campusPosition = useMemo(
-    () => rig.campusCentre.clone().add(new THREE.Vector3(0, 2.4, 0)),
+    () => rig.campusCentre.clone().add(new THREE.Vector3(0, 2.6, 0)),
     [rig.campusCentre],
   )
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
     const s = stage.current
+    const step = Math.min(delta, 0.1)
+    const L = resolveLighting(s.progress, refs.state)
     const warmth = s.warmth
-    const opened = s.trunkGrowth
+    const camera = state.camera
 
-    if (refs.ambient) {
-      // Ambient stays part-cool even at full warmth. Turning every light over
-      // to the same amber flattens the campus into one beige mass; keeping the
-      // fill cool is what leaves the warm window light somewhere to read
-      // against.
-      refs.ambient.intensity = 0.06 + opened * 0.55 + warmth * 0.3
-      refs.ambient.color.copy(COOL).lerp(WARM, warmth * 0.45)
+    // --- rotate the rig to follow the camera -------------------------------
+    const camAzimuth = Math.atan2(camera.position.z, camera.position.x)
+    const wanted = camAzimuth + KEY_LEAD
+    if (!refs.started) {
+      refs.azimuth = wanted
+      refs.started = true
+    } else {
+      // Shortest-path damping, or the rig swings the long way round whenever
+      // the camera crosses the -x axis.
+      let d = wanted - refs.azimuth
+      while (d > Math.PI) d -= Math.PI * 2
+      while (d < -Math.PI) d += Math.PI * 2
+      refs.azimuth += d * (1 - Math.exp(-1.1 * step))
     }
+
+    const cos = Math.cos(refs.azimuth)
+    const sin = Math.sin(refs.azimuth)
+    const height = 14 + camera.position.y * 0.55
 
     if (refs.key) {
-      // Held back at full warmth on purpose. The bark is nearly black, and a
-      // strong amber key turns the whole tree to milk chocolate — the warmth
-      // of the reveal should come from the campus windows, not from repainting
-      // everything around them.
-      refs.key.intensity = 0.25 + opened * 2.4 + warmth * 0.5
-      refs.key.color.copy(COOL).lerp(WARM, warmth * 0.55)
+      refs.key.position.set(cos * RIG_RADIUS, height + 14, sin * RIG_RADIUS)
+      refs.key.intensity = L.key
     }
-
     if (refs.fill) {
-      refs.fill.intensity = 0.15 + opened * 1.1
+      // Opposite the key and low, so it recovers the shadow side without
+      // flattening the form.
+      refs.fill.position.set(-cos * RIG_RADIUS, height * 0.4, -sin * RIG_RADIUS)
+      refs.fill.intensity = L.fill
+    }
+    if (refs.rim) {
+      // Behind the subject from the camera's point of view, and high: this is
+      // what puts an edge on the leaves and lifts them off the background.
+      const rimAz = camAzimuth + Math.PI
+      refs.rim.position.set(
+        Math.cos(rimAz) * RIG_RADIUS,
+        height + 18,
+        Math.sin(rimAz) * RIG_RADIUS,
+      )
+      refs.rim.intensity = L.rim
     }
 
-    if (refs.seedLight) {
-      // The ember fades out once the tree can carry the frame on its own.
-      refs.seedLight.intensity = s.seedGlow * 5.5
+    if (refs.camFill) {
+      // Sits above and behind the lens rather than on it, so it reads as
+      // ambient spill rather than as a torch beam.
+      camera.getWorldDirection(refs.camDir)
+      refs.camFill.position.copy(camera.position)
+      refs.camFill.position.addScaledVector(refs.camDir, -1.2)
+      refs.camFill.position.y += 1.6
+      refs.camFill.intensity = L.camFill * 9
     }
 
-    if (refs.seedKey) {
-      // The ember sits inside the shell, so on its own it lights nothing you
-      // can see. This is the one dim key that finds the outside of the seed,
-      // and it leaves as soon as the tree can carry the frame.
-      refs.seedKey.intensity = s.seedGlow * 2.1
-    }
+    if (refs.hemi) refs.hemi.intensity = L.hemi
+    if (refs.seedEmber) refs.seedEmber.intensity = s.seedGlow * 5.5
+    if (refs.seedKey) refs.seedKey.intensity = s.seedGlow * 1.6
+    if (refs.campus) refs.campus.intensity = s.campusLights * 15
 
-    if (refs.campusLight) {
-      refs.campusLight.intensity = s.campusLights * 9
-    }
-
-    if (refs.museumLight) {
-      // Rides with the camera: inside the canopy there is no sky and no bounce,
-      // so whatever the camera has come to look at has to bring its own light.
-      refs.museumLight.position.copy(state.camera.position)
-      refs.museumLight.intensity = s.museumFill * 16
+    // --- exposure and fog ---------------------------------------------------
+    const gl = state.gl
+    if (Math.abs(gl.toneMappingExposure - L.exposure) > 0.001) {
+      gl.toneMappingExposure = L.exposure
     }
 
     const fog = state.scene.fog
     if (fog) {
-      // Tight and cold in the canopy, wide and warm once through it. The near
-      // plane closing to within a few metres is what makes the approach feel
-      // like pushing through something.
-      const depth = s.canopyDepth
+      // Fog is for depth, not for hiding things: it never closes far enough to
+      // swallow whatever the camera is currently framing.
       fog.color.copy(FOG_COOL).lerp(FOG_WARM, warmth)
-      fog.near = THREE.MathUtils.lerp(
-        THREE.MathUtils.lerp(2.5, 1.0, depth),
-        14,
-        warmth,
-      )
-      fog.far = THREE.MathUtils.lerp(
-        THREE.MathUtils.lerp(26, 15, depth),
-        95,
-        warmth,
-      )
+      fog.near = L.fogNear
+      fog.far = L.fogFar
     }
   })
 
   return (
     <>
-      <fog attach="fog" args={['#06080b', 3, 26]} />
-      <ambientLight ref={(el) => { refs.ambient = el }} intensity={0.06} />
-      <hemisphereLight args={['#5f7ea8', '#0f0b06', 0.6]} />
+      <fog attach="fog" args={['#080b10', 7, 34]} />
 
-      <directionalLight
-        ref={(el) => { refs.key = el }}
-        position={[9, 22, 12]}
-        intensity={0.25}
+      {/* Ambient floor. Cool sky over a very dark warm ground, so the underside
+          of the canopy does not read the same as the top of it. */}
+      <hemisphereLight
+        ref={(el) => { refs.hemi = el }}
+        args={['#93aecb', '#17120c', 0.3]}
       />
-      <directionalLight
-        ref={(el) => { refs.fill = el }}
-        position={[-12, 8, -10]}
-        intensity={0.15}
-        color="#5f7ea8"
+
+      <directionalLight ref={(el) => { refs.key = el }} intensity={0} color="#ffeeda" />
+      <directionalLight ref={(el) => { refs.fill = el }} intensity={0} color="#7d9ac4" />
+      <directionalLight ref={(el) => { refs.rim = el }} intensity={0} color="#b8cfe8" />
+
+      <pointLight
+        ref={(el) => { refs.camFill = el }}
+        intensity={0}
+        distance={26}
+        decay={2}
+        color="#dfe8f5"
       />
 
       <pointLight
-        ref={(el) => { refs.seedLight = el }}
+        ref={(el) => { refs.seedEmber = el }}
         position={seedPosition}
         intensity={0}
         distance={9}
@@ -138,18 +167,12 @@ function EducationLighting({ stage, rig }) {
         intensity={0}
         color="#ffe0bd"
       />
+
       <pointLight
-        ref={(el) => { refs.museumLight = el }}
-        intensity={0}
-        distance={16}
-        decay={2}
-        color="#ffe4c4"
-      />
-      <pointLight
-        ref={(el) => { refs.campusLight = el }}
+        ref={(el) => { refs.campus = el }}
         position={campusPosition}
         intensity={0}
-        distance={26}
+        distance={30}
         decay={2}
         color="#ffc186"
       />

@@ -25,29 +25,36 @@ const PARALLAX_DAMPING = 1.7
  * seed, most in the open canopy.
  */
 const PATH = [
-  // 01 — the seed, close and nearly abstract
-  { at: 0.0, pos: [2.25, 1.15, 6.25], look: [0.32, 0.55, 2.62], fov: 28, shiftX: 0.8, shiftY: 0, parallax: 0.3 },
-  { at: 0.075, pos: [2.7, 1.45, 7.1], look: [0.3, 0.62, 2.5], fov: 30, shiftX: 0.8, shiftY: 0, parallax: 0.35 },
-  // 02 — pull back for roots and trunk, then tilt up and climb
-  { at: 0.135, pos: [3.7, 1.9, 7.3], look: [0.0, 1.3, 0.6], fov: 42, shiftX: -0.7, shiftY: 0, parallax: 0.5 },
-  { at: 0.195, pos: [5.9, 5.3, 10.3], look: [0.0, 6.2, 0.0], fov: 46, shiftX: -0.8, shiftY: 0.1, parallax: 0.6 },
-  // 03 — into the branch region
-  { at: 0.26, pos: [8.4, 11.2, 12.2], look: [0.0, 11.6, 0.0], fov: 46, shiftX: 0.85, shiftY: 0, parallax: 0.8 },
-  { at: 0.345, pos: [9.2, 14.6, 10.4], look: [0.2, 13.6, 0.2], fov: 44, shiftX: 0.5, shiftY: 0, parallax: 0.9 },
-  // 04 — the museum, one orbit through the five disciplines
-  { at: 0.42, pos: [8.9, 16.5, 6.8], look: [4.95, 16.05, 2.85], fov: 36, shiftX: -0.85, shiftY: 0, parallax: 0.7 },
-  { at: 0.472, pos: [-8.8, 16.4, 6.2], look: [-4.4, 15.7, 2.6], fov: 36, shiftX: 0.85, shiftY: 0, parallax: 0.7 },
-  { at: 0.512, pos: [-7.4, 19.4, 2.4], look: [-3.3, 17.9, -0.9], fov: 38, shiftX: -0.6, shiftY: 0.15, parallax: 0.7 },
-  { at: 0.548, pos: [-8.4, 12.4, -8.4], look: [-3.9, 11.8, -4.6], fov: 40, shiftX: 0.8, shiftY: 0, parallax: 0.7 },
-  { at: 0.578, pos: [11.4, 12.6, -2.2], look: [6.2, 12.0, -0.6], fov: 38, shiftX: -0.8, shiftY: 0, parallax: 0.7 },
-  // 05 — swing to the front and start moving inward
-  { at: 0.645, pos: [0.0, 12.6, 11.5], look: [0.3, 13.4, -1.2], fov: 46, shiftX: 0, shiftY: 0, parallax: 0.5 },
-  // 06 — the approach, threading the foliage
-  { at: 0.73, pos: [0.8, 14.6, 7.4], look: [0.3, 14.5, -2.3], fov: 40, shiftX: 0, shiftY: 0.1, parallax: 0.35 },
-  // 07 — through, and over the clearing
-  { at: 0.815, pos: [1.5, 19.2, 8.6], look: [0.3, 14.4, -2.3], fov: 42, shiftX: -0.45, shiftY: 0, parallax: 0.6 },
-  { at: 0.885, pos: [-6.2, 19.4, 7.2], look: [0.1, 14.3, -2.6], fov: 44, shiftX: 0.55, shiftY: 0, parallax: 0.6 },
-  // 08 — rise away for the closing composition
+  // 01 — the seed. Far enough back that it reads as a small object in a large
+  // dark space rather than filling the frame: about a fifth of frame height.
+  { at: 0.0, pos: [3.3, 2.7, 11.2], look: [0.32, 0.55, 2.62], fov: 30, shiftX: 0.8, shiftY: 0, parallax: 0.3 },
+  { at: 0.075, pos: [4.2, 3.4, 12.6], look: [0.3, 0.7, 2.5], fov: 32, shiftX: 0.8, shiftY: 0, parallax: 0.35 },
+  // 02 — roots and trunk, seen as a growing object. The whole base has to fit.
+  { at: 0.14, pos: [9.0, 5.0, 16.0], look: [0.0, 3.5, 0.0], fov: 42, shiftX: -0.7, shiftY: 0, parallax: 0.5 },
+  { at: 0.2, pos: [11.0, 9.0, 17.0], look: [0.0, 7.5, 0.0], fov: 44, shiftX: -0.8, shiftY: 0.1, parallax: 0.6 },
+  // 03 — climb alongside the trunk, then one clean overview from outside the
+  // canopy that establishes the geography before anything closer.
+  { at: 0.27, pos: [14.0, 13.0, 18.0], look: [0.0, 11.5, 0.0], fov: 42, shiftX: 0.85, shiftY: 0, parallax: 0.8 },
+  { at: 0.345, pos: [17.0, 16.0, 16.0], look: [0.0, 13.5, 0.0], fov: 40, shiftX: 0.5, shiftY: 0, parallax: 0.9 },
+  // 04 — the museum, as one orbit at a safe radius outside the canopy, looking
+  // inward at each hero. Ordered by azimuth so the camera sweeps once around
+  // rather than crossing the tree, and the long leg carries a corridor
+  // waypoint: a straight lerp between opposite sides goes through the trunk.
+  { at: 0.415, pos: [13.41, 13.4, 3.3], look: [6.14, 11.97, 0.29], fov: 30, shiftX: -0.85, shiftY: 0, parallax: 0.6, arc: true },
+  { at: 0.45, pos: [13.05, 16.2, 7.39], look: [5.27, 15.9, 2.98], fov: 30, shiftX: -0.8, shiftY: 0, parallax: 0.6, arc: true },
+  { at: 0.48, pos: [0.0, 17.0, 15.0], look: [0.0, 15.5, 2.0], fov: 40, shiftX: 0, shiftY: 0, parallax: 0.5, arc: true },
+  { at: 0.51, pos: [-12.75, 16.19, 6.13], look: [-5.36, 16.19, 3.07], fov: 30, shiftX: 0.85, shiftY: 0, parallax: 0.6, arc: true },
+  { at: 0.545, pos: [-14.34, 19.2, -4.39], look: [-1.85, 16.13, -0.58], fov: 32, shiftX: -0.6, shiftY: 0.15, parallax: 0.6, arc: true },
+  { at: 0.572, pos: [-13.91, 17.28, 1.15], look: [-2.88, 9.96, -3.42], fov: 32, shiftX: 0.8, shiftY: 0, parallax: 0.6, arc: true },
+  // 05 — swing back to the front, outside, and begin moving inward.
+  { at: 0.645, pos: [0.0, 13.5, 17.0], look: [0.3, 13.6, -1.0], fov: 44, shiftX: 0, shiftY: 0, parallax: 0.5, arc: true },
+  // 06 — the approach. This is the one place foliage is meant to be in the
+  // way, so the camera comes to the canopy edge rather than through it.
+  { at: 0.73, pos: [0.9, 18.4, 12.4], look: [0.3, 14.5, -2.3], fov: 40, shiftX: 0, shiftY: 0.1, parallax: 0.35 },
+  // 07 — over the rim and above the clearing.
+  { at: 0.815, pos: [2.2, 23.8, 9.4], look: [0.3, 14.4, -2.3], fov: 42, shiftX: -0.45, shiftY: 0, parallax: 0.6 },
+  { at: 0.885, pos: [12.5, 19.44, -9.35], look: [0.1, 14.3, -2.6], fov: 44, shiftX: 0.55, shiftY: 0, parallax: 0.6 },
+  // 08 — rise away for the closing composition.
   { at: 1.0, pos: [9.5, 24.5, 20.0], look: [0.6, 12.0, -1.2], fov: 46, shiftX: 0.55, shiftY: 0.3, parallax: 0.45 },
 ]
 
@@ -68,6 +75,10 @@ function EducationCamera({ stage, quality, composition, reducedMotion }) {
         ...key,
         position: new THREE.Vector3().fromArray(key.pos),
         target: new THREE.Vector3().fromArray(key.look),
+        // Cylindrical form, for the legs that orbit the tree.
+        radius: Math.hypot(key.pos[0], key.pos[2]),
+        azimuth: Math.atan2(key.pos[2], key.pos[0]),
+        height: key.pos[1],
       })),
     [],
   )
@@ -79,6 +90,7 @@ function EducationCamera({ stage, quality, composition, reducedMotion }) {
     right: new THREE.Vector3(),
     up: new THREE.Vector3(),
     smoothedLook: new THREE.Vector3(),
+    glance: new THREE.Vector3(),
     parallaxX: 0,
     parallaxY: 0,
     started: false,
@@ -98,8 +110,43 @@ function EducationCamera({ stage, quality, composition, reducedMotion }) {
       THREE.MathUtils.clamp((p - from.at) / (to.at - from.at), 0, 1),
     )
 
-    scratch.position.lerpVectors(from.position, to.position, local)
-    scratch.target.lerpVectors(from.target, to.target, local)
+    if (from.arc && to.arc) {
+      // Orbit legs interpolate in cylindrical space. Lerping the two positions
+      // directly draws a chord, and a chord between opposite sides of the tree
+      // goes straight through the trunk — which is exactly how the camera used
+      // to end up inside the canopy between hero shots.
+      let sweep = to.azimuth - from.azimuth
+      while (sweep > Math.PI) sweep -= Math.PI * 2
+      while (sweep < -Math.PI) sweep += Math.PI * 2
+      const azimuth = from.azimuth + sweep * local
+      const radius = THREE.MathUtils.lerp(from.radius, to.radius, local)
+      const height = THREE.MathUtils.lerp(from.height, to.height, local)
+      scratch.position.set(
+        Math.cos(azimuth) * radius,
+        height,
+        Math.sin(azimuth) * radius,
+      )
+      scratch.target.lerpVectors(from.target, to.target, local)
+
+      // Look where you are going. Holding the aim on a distant artifact while
+      // swinging round the tree means staring through the canopy for the whole
+      // move; glancing at the near foliage instead keeps the frame full of
+      // what the camera is actually passing. Zero at both ends, so each shot
+      // still lands exactly on its hero.
+      // Aimed at the near surface of the canopy, not into the middle of it.
+      // At a third of the orbit radius the target sits deep inside the tree,
+      // so the camera spends the whole move looking through ten metres of
+      // leaves — which is exactly what buried the transitional statements.
+      scratch.glance.set(
+        Math.cos(azimuth) * radius * 0.62,
+        height * 0.96,
+        Math.sin(azimuth) * radius * 0.62,
+      )
+      scratch.target.lerp(scratch.glance, Math.sin(local * Math.PI) * 0.7)
+    } else {
+      scratch.position.lerpVectors(from.position, to.position, local)
+      scratch.target.lerpVectors(from.target, to.target, local)
+    }
     let fov = THREE.MathUtils.lerp(from.fov, to.fov, local) + quality.fovBoost
     const shiftX = THREE.MathUtils.lerp(from.shiftX, to.shiftX, local)
     const shiftY = THREE.MathUtils.lerp(from.shiftY, to.shiftY, local)

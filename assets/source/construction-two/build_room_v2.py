@@ -197,36 +197,166 @@ box(bm, (2.34, 0.020, 0.30), loc=(0.10, DY1 - 0.085, DTOP-0.235), bevel=0.003)
 mk(bm, "Desk_Panel", MAT["dark_m"], C["Desk"], "Desk")
 
 # ---------------------------------------------------------------- task chair
+# A slim contemporary task chair, modelled AROUND the seated figure rather than
+# in isolation. Every height here was measured off her geometry first:
+#
+#   thigh underside .... z 0.400 - 0.414   ->  seat plane sits at 0.396 - 0.405
+#   lumbar, furthest back at y_rel -0.128  ->  back panel front face at -0.146
+#   forearm underside .. z 0.732 upward    ->  arm pads top out at 0.667
+#
+# She is leaning forward onto the desk, so her back is off the backrest above
+# the lumbar and her forearms are lifted clear of the arm pads. Both are true
+# of anyone actually working; what matters is that nothing intersects.
+#
+# Note the local loft() below. room_lib's sweep() chooses its own parallel
+# transport frame, and on a run that is mostly horizontal that frame stands the
+# profile on edge — which is exactly how the previous seat became a 5.6 cm wide
+# vertical fin instead of a 46 cm seat pad. Every section here is placed
+# explicitly instead.
 CX, CY = -0.34, 0.16
+
+CHAIR_ROOT = bpy.data.objects.new("Chair_Root", None)
+C["Chair"].objects.link(CHAIR_ROOT)
+CHAIR_ROOT.location = (CX, CY, 0.0)
+CHAIR_ROOT.empty_display_size = 0.12
+CHAIR_ROOT["group"] = "Chair"
+bpy.context.view_layer.update()
+
+def CV(x, y, z):
+    return (CX + x, CY + y, z)
+
+def loft(bm, rings, caps=True):
+    R = [vlist(bm, r) for r in rings]
+    for i in range(len(R) - 1):
+        bridge(bm, R[i], R[i + 1])
+    if caps:
+        cap_ring(bm, R[-1], True)
+        cap_ring(bm, R[0], False)
+    return R
+
+def CH(bm, name, material, smooth=True):
+    return mk(bm, name, material, C["Chair"], "Chair", smooth=smooth, parent=CHAIR_ROOT)
+
+# --- seat: 49 x 45 cm, dished, tapered underside, front edge rolled away from
+#     the back of her knee. (y_rel, width, thickness, top z)
+SEAT = [(-0.155, 0.430, 0.036, 0.405), (-0.095, 0.476, 0.048, 0.400),
+        ( 0.000, 0.490, 0.052, 0.397), ( 0.100, 0.488, 0.050, 0.399),
+        ( 0.195, 0.472, 0.046, 0.404), ( 0.258, 0.442, 0.038, 0.404),
+        ( 0.295, 0.398, 0.024, 0.396)]
 bm = bmesh.new()
-cyl(bm, 0.032, 0.30, loc=(CX, CY, 0.30), verts=12, r2=0.028)             # stem
-cyl(bm, 0.055, 0.05, loc=(CX, CY, 0.455), verts=12)                      # seat plate
-for k in range(5):
-    a = math.tau*k/5 + 0.4
-    box(bm, (0.30, 0.045, 0.022), loc=(CX + math.cos(a)*0.16, CY + math.sin(a)*0.16, 0.035),
-        rot=(0, 0, a), bevel=0.006)
-    cyl(bm, 0.028, 0.045, loc=(CX + math.cos(a)*0.30, CY + math.sin(a)*0.30, 0.026),
-        rot=(math.pi/2, 0, a), verts=8)
-mk(bm, "Chair_Base", MAT["brushed"], C["Chair"], "Chair")
+loft(bm, [[CV(u, y, zt - t/2 + v) for (u, v) in rrect_profile(w, t, t*0.44, per=2)]
+          for (y, w, t, zt) in SEAT])
+CH(bm, "Chair_Seat", MAT["black"])
 
-bm = bmesh.new()                                                          # seat pad
-sweep(bm, [Vector((CX, CY-0.21, 0.482)), Vector((CX, CY, 0.474)), Vector((CX, CY+0.21, 0.486))],
-      lambda t: rrect_profile(0.46 - 0.03*math.sin(math.pi*t), 0.055, 0.024, per=2))
-mk(bm, "Chair_Seat", MAT["cloth_l"], C["Chair"], "Chair", smooth=True)
+# --- back: a thin mesh-style panel, curved in plan so the edges come forward
+#     around her, with a lumbar bulge. (z, front-face y_rel, width)
+BACK = [(0.455, -0.160, 0.372), (0.520, -0.152, 0.416), (0.585, -0.146, 0.430),
+        (0.660, -0.156, 0.420), (0.740, -0.174, 0.392), (0.820, -0.196, 0.360),
+        (0.890, -0.216, 0.330), (0.935, -0.230, 0.306)]
+WRAP, PT = 0.62, 0.022                    # plan radius, panel thickness
 
-bm = bmesh.new()                                                          # slim back
-back = [Vector((CX, CY-0.225, 0.545)), Vector((CX, CY-0.262, 0.700)),
-        Vector((CX, CY-0.276, 0.855)), Vector((CX, CY-0.262, 0.965))]
-sweep(bm, back, lambda t: rrect_profile(0.330 - 0.055*t*t, 0.034, 0.015, per=3))
-box(bm, (0.046, 0.046, 0.14), loc=(CX, CY-0.212, 0.520), rot=(0.24, 0, 0))
-mk(bm, "Chair_Back", MAT["cloth_d"], C["Chair"], "Chair", smooth=True)
+def back_ring(z, yf, w):
+    hw = w/2
+    xs = [-hw + 2*hw*k/7 for k in range(8)]
+    front = [CV(x, yf + x*x/(2*WRAP), z) for x in xs]
+    rear  = [CV(x, yf + x*x/(2*WRAP) - PT, z) for x in reversed(xs)]
+    return front + rear
 
-bm = bmesh.new()                                                          # armrests
+bm = bmesh.new()
+loft(bm, [back_ring(*row) for row in BACK])
+CH(bm, "Chair_Back", MAT["board"])
+
+# --- back frame: slim perimeter rails plus the two spines carrying the back
+#     down to the mechanism, routed behind the seat so nothing passes through it
+bm = bmesh.new()
 for s_ in (-1, 1):
-    sweep(bm, [Vector((CX + s_*0.205, CY-0.19, 0.50)), Vector((CX + s_*0.222, CY-0.15, 0.62)),
-               Vector((CX + s_*0.216, CY+0.02, 0.652)), Vector((CX + s_*0.208, CY+0.13, 0.644))],
-          circle_profile(0.020, 8))
-mk(bm, "Chair_Arms", MAT["dark_m"], C["Chair"], "Chair", smooth=True)
+    rings = []
+    for (z, yf, w) in (BACK[0], BACK[2], BACK[4], BACK[6], BACK[7]):
+        x = s_*(w/2 + 0.013)
+        yc = yf + x*x/(2*WRAP) - PT/2
+        rings.append([CV(x + u, yc + v, z)
+                      for (u, v) in rrect_profile(0.020, 0.038, 0.009, per=2)])
+    loft(bm, rings)
+for idx, th in ((7, 0.030), (0, 0.026)):
+    z, yf, w = BACK[idx]
+    hw = w/2 + 0.013
+    rings = []
+    for k in range(6):
+        x = -hw + 2*hw*k/5
+        yc = yf + x*x/(2*WRAP) - PT/2
+        rings.append([CV(x, yc + u, z + v)
+                      for (u, v) in rrect_profile(0.036, th, 0.010, per=2)])
+    loft(bm, rings)
+SPINE = [(0.340, -0.176, 0.048), (0.400, -0.180, 0.046),
+         (0.450, -0.174, 0.044), (0.492, -0.166, 0.040)]
+for s_ in (-1, 1):
+    loft(bm, [[CV(s_*0.150 + u, y + v, z)
+               for (u, v) in rrect_profile(0.026, d, 0.010, per=2)]
+              for (z, y, d) in SPINE])
+CH(bm, "Chair_BackFrame", MAT["black"])
+
+# --- arms: narrow pads on a single tapered blade, mounted to the cross-member
+#     under the seat. The pads sit under the outer half of her upper arm.
+ARMP = [(-0.020, 0.050, 0.015, 0.652), (0.045, 0.058, 0.019, 0.656),
+        ( 0.140, 0.058, 0.019, 0.662), (0.222, 0.054, 0.017, 0.667),
+        ( 0.265, 0.042, 0.011, 0.664)]
+# The blade leans outward as it rises and thins as it goes, so it reads as
+# structure rather than a stick. (z, y_rel, depth, |x|)
+POST = [(0.336, 0.072, 0.062, 0.236), (0.430, 0.078, 0.054, 0.242),
+        (0.540, 0.084, 0.047, 0.247), (0.646, 0.090, 0.042, 0.250)]
+for s_, nm in ((-1, "Chair_Arm_Left"), (1, "Chair_Arm_Right")):
+    bm = bmesh.new()
+    loft(bm, [[CV(s_*0.244 + u, y, zt - t/2 + v)
+               for (u, v) in rrect_profile(w, t, t*0.44, per=2)]
+              for (y, w, t, zt) in ARMP])
+    loft(bm, [[CV(s_*px + u, y + v, z)
+               for (u, v) in rrect_profile(0.020 + (0.646 - z)*0.026, d, 0.009, per=2)]
+              for (z, y, d, px) in POST])
+    CH(bm, nm, MAT["black"])
+
+# --- mechanism: compact housing plus the cross-member the arm blades land on.
+#     Kept just inside the seat's own width so its ends read as arm mounts
+#     rather than as bars sticking out from under the pad.
+bm = bmesh.new()
+box(bm, (0.230, 0.230, 0.038), loc=CV(0, -0.058, 0.334), bevel=0.006)
+box(bm, (0.496, 0.072, 0.026), loc=CV(0, 0.064, 0.338), bevel=0.008)
+cyl(bm, 0.010, 0.130, loc=CV(0.180, -0.014, 0.318), rot=(0, math.pi/2, 0.35), verts=8)
+box(bm, (0.066, 0.018, 0.006), loc=CV(0.256, 0.010, 0.318), rot=(0, 0, 0.35), bevel=0.002)
+CH(bm, "Chair_Mechanism", MAT["dark_m"], smooth=False)
+
+# --- column: gas lift with its telescoping collar. Dark metal, not polished:
+#     a bright base pulls the eye straight to the floor in every wide shot.
+bm = bmesh.new()
+cyl(bm, 0.033, 0.244, loc=CV(0, 0, 0.216), verts=14, r2=0.027)
+cyl(bm, 0.040, 0.086, loc=CV(0, 0, 0.190), verts=14)
+cyl(bm, 0.046, 0.018, loc=CV(0, 0, 0.328), verts=14)
+CH(bm, "Chair_Column", MAT["dark_m"])
+
+# --- base: five evenly spaced tapered spokes, one running dead aft.
+#     (radius, half-width, top z, bottom z) — a low stance that thins outward.
+SPOKE_A = [math.radians(270 + 72*k) for k in range(5)]
+SEC = [(0.052, 0.030, 0.100, 0.060), (0.150, 0.026, 0.084, 0.048),
+       (0.250, 0.020, 0.064, 0.038), (0.325, 0.016, 0.052, 0.032)]
+bm = bmesh.new()
+cyl(bm, 0.060, 0.048, loc=CV(0, 0, 0.078), verts=20, r2=0.052)
+for a in SPOKE_A:
+    ca, sa = math.cos(a), math.sin(a)
+    rings = []
+    for (r, hw, zt, zb) in SEC:
+        cz, th = (zt + zb)/2, zt - zb
+        rings.append([CV(ca*r - sa*u, sa*r + ca*u, cz + v)
+                      for (u, v) in rrect_profile(hw*2, th, min(hw, th/2)*0.7, per=2)])
+    loft(bm, rings)
+CH(bm, "Chair_Base", MAT["dark_m"])
+
+# --- casters: compact wheels, each its own node
+for k, a in enumerate(SPOKE_A):
+    ca, sa = math.cos(a), math.sin(a)
+    bm = bmesh.new()
+    cyl(bm, 0.014, 0.034, loc=CV(ca*0.325, sa*0.325, 0.046), verts=8)
+    cyl(bm, 0.027, 0.020, loc=CV(ca*0.332, sa*0.332, 0.035),
+        rot=(math.pi/2, 0, a), verts=12)
+    CH(bm, f"Chair_Caster_{k+1:02d}", MAT["black"])
 
 # ---------------------------------------------------------------- task lamp
 LPX, LPY = 1.34, 1.52
@@ -245,8 +375,14 @@ mk(bm, "Lamp_Emitter", MAT["warm"], C["LightingElements"], "LightingElements")
 
 # ================================================================ THE MODEL
 # A conceptual tower: shifted slabs, two frosted volumes, an exposed circulation
-# core and a mast. Authored with each piece's ORIGIN AT ITS OWN BASE CENTRE so
-# the web build can grow every piece upward from its footprint.
+# core and a mast.
+#
+# IMPORTANT, and the source of a long-standing bug on the web side: every piece
+# shares ONE origin, at the model's base centre on the desk. A piece's own
+# height is baked into its local Z, so local bounding boxes are neither centred
+# on the origin nor sitting on it — Bld_13_mast's local Z runs 0.521 to 0.691.
+# Anything growing these pieces upward has to read each mesh's own local bounds
+# rather than assume a centred or base-seated origin.
 MX, MY = 0.56, 1.30
 BLD = []
 def bld(idx, name, material, build):
@@ -269,8 +405,8 @@ bld(2,  "Bld_02_podium", MAT["model"],                       # long low bar, cut
                 slab(bm, 0.150, 0.190, 0.070, -0.160, 0.040, 0.015, RZ),
                 slab(bm, 0.450, 0.330, 0.008, -0.020, -0.020, 0.085, RZ, 0.001)))
 bld(3,  "Bld_03_plate",  MAT["card"],                        # first cantilever, +x
-    lambda bm: (slab(bm, 0.330, 0.250, 0.009, 0.062, 0.020, 0.093, RZ),
-                slab(bm, 0.330, 0.008, 0.020, 0.062, 0.121, 0.096, RZ, 0.001)))
+    lambda bm: (slab(bm, 0.412, 0.250, 0.009, 0.021, 0.020, 0.093, RZ),
+                slab(bm, 0.412, 0.008, 0.020, 0.021, 0.121, 0.096, RZ, 0.001)))
 bld(4,  "Bld_04_volume", MAT["frost"],                       # glazed lower volume
     lambda bm: slab(bm, 0.210, 0.196, 0.098, 0.030, 0.014, 0.102, RZ, 0.002))
 bld(5,  "Bld_05_plate",  MAT["card"],                        # cantilever swings -x
@@ -280,19 +416,23 @@ bld(6,  "Bld_06_volume", MAT["model"],                       # solid mass, terra
     lambda bm: (slab(bm, 0.200, 0.186, 0.092, 0.026, 0.020, 0.209, RZ, 0.002),
                 slab(bm, 0.070, 0.080, 0.030, -0.060, -0.030, 0.209, RZ, 0.002)))
 bld(7,  "Bld_07_plate",  MAT["card"],
-    lambda bm: (slab(bm, 0.300, 0.232, 0.009, 0.020, 0.024, 0.301, RZ),
+    lambda bm: (slab(bm, 0.355, 0.232, 0.009, -0.008, 0.024, 0.301, RZ),
                 slab(bm, 0.100, 0.120, 0.004, -0.110, -0.040, 0.301, RZ, 0.001)))
 bld(8,  "Bld_08_volume", MAT["frost"],                       # slender tower begins
     lambda bm: slab(bm, 0.150, 0.164, 0.104, 0.048, 0.028, 0.310, RZ, 0.002))
 bld(9,  "Bld_09_plate",  MAT["card"],
-    lambda bm: (slab(bm, 0.244, 0.208, 0.009, 0.030, 0.024, 0.414, RZ),
-                slab(bm, 0.244, 0.008, 0.018, 0.030, 0.124, 0.417, RZ, 0.001)))
+    lambda bm: (slab(bm, 0.337, 0.208, 0.009, -0.016, 0.024, 0.414, RZ),
+                slab(bm, 0.337, 0.008, 0.018, -0.016, 0.124, 0.417, RZ, 0.001)))
 bld(10, "Bld_10_volume", MAT["model"],
     lambda bm: (slab(bm, 0.138, 0.150, 0.088, 0.052, 0.026, 0.423, RZ, 0.002),
                 slab(bm, 0.026, 0.150, 0.088, -0.030, 0.026, 0.423, RZ, 0.001)))
 def core(bm):                                                # exposed core, full height
-    box(bm, (0.070, 0.104, 0.512), loc=(-0.176, -0.042, 0.256), rot=(0, 0, RZ), bevel=0.002)
-    for k in range(9):
+    # Runs past the roof and takes a cap of its own: a lift overrun. Previously
+    # it stopped dead level with the roof slab that does not cover it, which
+    # read as an unfinished shaft parked beside the tower.
+    box(bm, (0.070, 0.104, 0.542), loc=(-0.176, -0.042, 0.271), rot=(0, 0, RZ), bevel=0.002)
+    box(bm, (0.090, 0.124, 0.014), loc=(-0.176, -0.042, 0.549), rot=(0, 0, RZ), bevel=0.002)
+    for k in range(10):
         box(bm, (0.078, 0.016, 0.004), loc=(-0.176, -0.042, 0.050 + k*0.052), rot=(0, 0, RZ))
     box(bm, (0.150, 0.014, 0.010), loc=(-0.110, -0.042, 0.196), rot=(0, 0, RZ))
     box(bm, (0.150, 0.014, 0.010), loc=(-0.110, -0.042, 0.404), rot=(0, 0, RZ))

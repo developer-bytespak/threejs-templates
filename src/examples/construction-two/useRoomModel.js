@@ -51,6 +51,53 @@ function assemblyOrderOf(object) {
 }
 
 /**
+ * A building piece's resting state, captured once and never re-read from the
+ * live transform afterwards.
+ *
+ * Building.jsx animates these meshes every frame and useGLTF hands every caller
+ * the same cached scene, so a second pass through this hook would otherwise
+ * "capture" a mid-animation pose as the piece's resting place, and each pass
+ * would compound the last. Everything the animation needs is frozen here:
+ * position, orientation, scale, and the mesh's own local vertical bounds.
+ *
+ * Those local bounds matter. The thirteen pieces share ONE origin, at the
+ * model's base on the desk, with each piece's height baked into its local Y —
+ * so a piece's geometry is neither centred on its origin nor sitting on it.
+ * Bld_13_mast's local Y runs 0.521 to 0.691. Growth maths that assumes either
+ * lands the solid somewhere its wireframe is not.
+ */
+function restingState(mesh) {
+  let rest = mesh.userData.rest
+  if (!rest) {
+    mesh.geometry.computeBoundingBox()
+    const local = mesh.geometry.boundingBox
+    rest = {
+      position: mesh.position.clone(),
+      quaternion: mesh.quaternion.clone(),
+      scale: mesh.scale.clone(),
+      localMinY: local.min.y,
+      localHeight: Math.max(local.max.y - local.min.y, 1e-4),
+    }
+    mesh.userData.rest = rest
+  }
+
+  // Put the mesh back where it rests before anything is measured off it. Once
+  // Building.jsx has wrapped it, resting *is* the identity transform: the
+  // wrapper carries the rest transform and the mesh animates inside it.
+  if (mesh.parent?.userData?.pieceRoot) {
+    mesh.position.set(0, 0, 0)
+    mesh.quaternion.identity()
+    mesh.scale.set(1, 1, 1)
+  } else {
+    mesh.position.copy(rest.position)
+    mesh.quaternion.copy(rest.quaternion)
+    mesh.scale.copy(rest.scale)
+  }
+
+  return rest
+}
+
+/**
  * Loads the studio, swaps in the stylised materials, re-seats it so its
  * footprint is centred on the origin with the floor at y = 0, and measures a
  * focus point per object group.
@@ -93,6 +140,17 @@ export function useRoomModel() {
       object.frustumCulled = true
     })
 
+    // Freeze — or restore — every building piece before a single measurement is
+    // taken, so the shell, the group bounds and the camera focus points are all
+    // read off the assembled model rather than whatever frame the last mount
+    // happened to stop on.
+    const resting = new Map()
+    scene.traverse((object) => {
+      if (!object.isMesh) return
+      if (groupNameOf(object) !== BUILDING_GROUP) return
+      resting.set(object, restingState(object))
+    })
+
     scene.position.set(0, 0, 0)
     scene.updateMatrixWorld(true)
 
@@ -119,18 +177,10 @@ export function useRoomModel() {
 
       if (key !== BUILDING_GROUP) return
 
-      object.geometry.computeBoundingBox()
-      const local = object.geometry.boundingBox
-      const height = Math.max(local.max.y - local.min.y, 1e-4)
-
       building.push({
         order: assemblyOrderOf(object),
         mesh: object,
-        height,
-        // Where the piece's underside sits in its parent's space, so it can be
-        // grown upward from there instead of out of its own centre.
-        footY: object.position.y + local.min.y,
-        restY: object.position.y,
+        rest: resting.get(object) ?? restingState(object),
       })
 
       // Nothing on the desk until the scroll reaches it.

@@ -4,6 +4,8 @@
   "generatedBy": "assets/source/construction-two/build_room_v2.py",
   "units": "metres, Y-up",
   "note": "Node extras carry {group, order}; the loader reads those, not names.",
+  "buildNote": "All Building pieces share one rest origin at the model's base on the desk; each piece's height lives in its own local Y. Grow a piece with scale.y = s and position.y = localMinY * (1 - s) inside a wrapper holding the rest transform, and its underside holds while it lands on its wireframe.",
+  "totalTriangles": 14076,
   "shellSize": [
     6.99,
     3.59,
@@ -32,7 +34,7 @@
       "count": 14,
       "centre": [
         0.641,
-        1.188,
+        1.187,
         -1.42
       ],
       "size": [
@@ -55,16 +57,16 @@
       ]
     },
     "Chair": {
-      "count": 4,
+      "count": 13,
       "centre": [
-        -0.262,
-        0.583,
-        -0.298
+        -0.255,
+        0.579,
+        -0.249
       ],
       "size": [
-        0.635,
-        0.969,
-        0.622
+        0.689,
+        0.942,
+        0.655
       ]
     },
     "Credenza": {
@@ -212,20 +214,244 @@
     }
   },
   "building": [
-    "Bld_01_base",
-    "Bld_02_podium",
-    "Bld_Accent",
-    "Bld_03_plate",
-    "Bld_04_volume",
-    "Bld_05_plate",
-    "Bld_06_volume",
-    "Bld_07_plate",
-    "Bld_08_volume",
-    "Bld_09_plate",
-    "Bld_10_volume",
-    "Bld_11_core",
-    "Bld_12_roof",
-    "Bld_13_mast"
+    {
+      "name": "Bld_01_base",
+      "order": 1,
+      "localMinY": 0,
+      "localMaxY": 0.015,
+      "restPosition": [
+        0.56,
+        0.742,
+        -1.3
+      ],
+      "restRotationY": -62.0,
+      "restScale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "Bld_02_podium",
+      "order": 2,
+      "localMinY": 0.015,
+      "localMaxY": 0.093,
+      "restPosition": [
+        0.56,
+        0.742,
+        -1.3
+      ],
+      "restRotationY": -62.0,
+      "restScale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "Bld_Accent",
+      "order": 2,
+      "localMinY": 0.085,
+      "localMaxY": 0.089,
+      "restPosition": [
+        0.56,
+        0.742,
+        -1.3
+      ],
+      "restRotationY": -62.0,
+      "restScale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "Bld_03_plate",
+      "order": 3,
+      "localMinY": 0.093,
+      "localMaxY": 0.116,
+      "restPosition": [
+        0.56,
+        0.742,
+        -1.3
+      ],
+      "restRotationY": -62.0,
+      "restScale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "Bld_04_volume",
+      "order": 4,
+      "localMinY": 0.102,
+      "localMaxY": 0.2,
+      "restPosition": [
+        0.56,
+        0.742,
+        -1.3
+      ],
+      "restRotationY": -62.0,
+      "restScale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "Bld_05_plate",
+      "order": 5,
+      "localMinY": 0.2,
+      "localMaxY": 0.223,
+      "restPosition": [
+        0.56,
+        0.742,
+        -1.3
+      ],
+      "restRotationY": -62.0,
+      "restScale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "Bld_06_volume",
+      "order": 6,
+      "localMinY": 0.209,
+      "localMaxY": 0.301,
+      "restPosition": [
+        0.56,
+        0.742,
+        -1.3
+      ],
+      "restRotationY": -62.0,
+      "restScale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "Bld_07_plate",
+      "order": 7,
+      "localMinY": 0.301,
+      "localMaxY": 0.31,
+      "restPosition": [
+        0.56,
+        0.742,
+        -1.3
+      ],
+      "restRotationY": -62.0,
+      "restScale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "Bld_08_volume",
+      "order": 8,
+      "localMinY": 0.31,
+      "localMaxY": 0.414,
+      "restPosition": [
+        0.56,
+        0.742,
+        -1.3
+      ],
+      "restRotationY": -62.0,
+      "restScale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "Bld_09_plate",
+      "order": 9,
+      "localMinY": 0.414,
+      "localMaxY": 0.435,
+      "restPosition": [
+        0.56,
+        0.742,
+        -1.3
+      ],
+      "restRotationY": -62.0,
+      "restScale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "Bld_10_volume",
+      "order": 10,
+      "localMinY": 0.423,
+      "localMaxY": 0.511,
+      "restPosition": [
+        0.56,
+        0.742,
+        -1.3
+      ],
+      "restRotationY": -62.0,
+      "restScale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "Bld_11_core",
+      "order": 11,
+      "localMinY": 0,
+      "localMaxY": 0.556,
+      "restPosition": [
+        0.56,
+        0.742,
+        -1.3
+      ],
+      "restRotationY": -62.0,
+      "restScale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "Bld_12_roof",
+      "order": 12,
+      "localMinY": 0.511,
+      "localMaxY": 0.549,
+      "restPosition": [
+        0.56,
+        0.742,
+        -1.3
+      ],
+      "restRotationY": -62.0,
+      "restScale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "Bld_13_mast",
+      "order": 13,
+      "localMinY": 0.521,
+      "localMaxY": 0.691,
+      "restPosition": [
+        0.56,
+        0.742,
+        -1.3
+      ],
+      "restRotationY": -62.0,
+      "restScale": [
+        1,
+        1,
+        1
+      ]
+    }
   ],
   "palette": {
     "mat_wall_plaster": {

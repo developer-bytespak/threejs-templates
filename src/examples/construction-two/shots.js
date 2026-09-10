@@ -7,124 +7,117 @@ import * as THREE from 'three'
  * centre; `nudge` slides it in world space when a group's centre is not the
  * part worth looking at.
  *
- * Axes, Y-up: the pinboard wall is toward -Z, the window is toward -X, the
- * credenza toward +X. She sits facing -Z, so a camera over her shoulder has
- * positive Z in its offset.
+ * Axes, Y-up: the pin-up wall is toward -Z, the window toward -X, the credenza
+ * toward +X. She sits facing -Z, so a camera over her shoulder has positive Z
+ * in its offset. The studio is a cutaway — the +Z side is open — so the camera
+ * has room to establish and depart without breaking through a wall.
  *
- * Keeping every camera inside the room's roughly 5.0 x 2.9 x 7.0 shell is the
- * one hard constraint: the walls are single-sided, so a camera outside sees
- * nothing at all. resolveShots warns in dev when a shot breaks out.
+ * Shell is roughly 7.0 x 3.6 x 7.8. resolveShots warns in dev about any camera
+ * that leaves it.
  */
 export const SHOTS = [
   {
     id: 'arrival',
     eyebrow: '01 — Arrival',
     title: 'Late in the afternoon',
-    body: 'One window, one desk, and light coming in at the angle that means the day is nearly over.',
+    body: 'One window, one long desk, and light coming in at the angle that means the day is nearly over.',
     aim: 'Floor',
     lift: 1.35,
-    from: [1.6, 0.5, 2.6],
+    from: [1.70, 0.55, 2.70],
     fov: 52,
   },
   {
     id: 'desk',
     eyebrow: '02 — The desk',
     title: 'Still working',
-    body: 'Both forearms on the surface, pen within reach, the page angled to catch what light there is.',
-    // Matches the Blender camera exactly: this offset is that camera's
-    // position minus the figure's centre, so lift has to stay at zero.
+    body: 'Both forearms on the walnut, pencil set down, the sheet angled to catch what light is left.',
     aim: 'Figure',
-    lift: 0,
-    from: [0.72, 0.75, 1.52],
-    fov: 34,
+    lift: 0.42,
+    from: [1.05, 0.92, 2.10],
+    fov: 38,
   },
   {
     id: 'pinboard',
     eyebrow: '03 — The wall',
     title: 'Everything pinned up',
-    body: 'Seventeen sheets, a few tacks, and the sun cutting a hard wedge across all of it.',
+    body: 'Plans, elevations, one section, a stack of axonometrics. The whole project, flattened and tacked.',
+    // Pulled back past her shoulder: she reads as foreground, the desk as
+    // midground, the board fills the frame behind both.
     aim: 'Pinboard',
-    lift: -0.1,
-    from: [0.35, 0.05, 3.15],
-    fov: 38,
+    lift: -0.05,
+    from: [0.30, 0.10, 4.55],
+    fov: 55,
   },
   {
     id: 'window',
     eyebrow: '04 — The window',
     title: 'The city, flattened',
-    body: 'Rooftops reduced to shapes, a spire, three clouds that have not moved all afternoon.',
-    // Nearly head-on: the glazing faces +X, so keeping the z offset small
-    // stops the camera seeing past the edge of the sky card behind it.
+    body: 'Four panes of dark steel, and a skyline reduced to three planes of grey.',
     aim: 'Window',
-    lift: 0,
-    from: [2.35, 0.12, 0.55],
-    fov: 40,
+    lift: -0.15,
+    from: [3.05, 0.30, 1.60],
+    fov: 46,
   },
   {
     id: 'desktop',
     eyebrow: '05 — The page',
     title: 'Where the work is',
-    body: 'Loose sheets, a notebook shut on top of itself, a pen set down mid-thought.',
+    body: 'A plan under tracing paper, a scale rule, four material samples squared off at the edge.',
     aim: 'Desktop',
-    lift: 0.05,
-    from: [0.55, 0.75, 1.35],
-    fov: 34,
+    lift: 0.10,
+    from: [0.62, 0.92, 1.72],
+    fov: 36,
   },
   {
     id: 'model',
     eyebrow: '06 — The model',
     title: 'What it will be',
-    body: 'Thirteen pieces of card, stacked and set back, standing in for something not built yet.',
+    body: 'Thirteen pieces of card and frosted acrylic — a podium, four floor plates, an exposed core.',
     aim: 'Building',
-    lift: 0.02,
+    lift: 0.04,
     // Steep, but not straight down: a dead-vertical camera has no stable
-    // right-vector, and the silhouette of the setbacks is worth keeping.
-    from: [0.26, 0.6, 0.46],
-    fov: 42,
+    // right-vector, and the cantilevers are worth keeping in silhouette.
+    from: [0.46, 0.74, 0.82],
+    fov: 40,
   },
   {
     id: 'credenza',
-    eyebrow: '06 — The credenza',
+    eyebrow: '07 — The library',
     title: 'Filed and forgotten',
-    body: 'Three trays, a stack that never made it into them, and shapes arranged by someone with a system.',
-    // The group box is dominated by the tall back panel, so its centre sits
-    // well above the trays and stacks worth looking at — hence the drop.
+    body: 'Nine spines, two sample boxes, three rolled sets, and one older model nobody has thrown out.',
     aim: 'Credenza',
-    lift: -0.15,
-    from: [-1.6, 0.4, 1.9],
-    fov: 45,
+    lift: 0.16,
+    from: [-2.30, 0.62, 1.60],
+    fov: 48,
   },
   {
-    // The plant reads as blue-on-blue from every angle — it sits on the
-    // shadow side and both its palette colours are dark — so this beat looks
-    // at the chair instead, which catches the window light side-on.
     id: 'chair',
-    eyebrow: '07 — The seat',
+    eyebrow: '08 — The seat',
     title: 'Turned away',
-    body: 'Cream vinyl on a steel stem, back turned to the room. She has not moved from it in a while.',
+    body: 'A slim back on a steel pedestal, turned toward the work. She has not moved from it in a while.',
     aim: 'Chair',
-    lift: 0.3,
-    from: [1.5, 0.35, 0.4],
-    fov: 42,
+    lift: 0.34,
+    from: [1.80, 0.58, 1.20],
+    fov: 44,
   },
   {
     id: 'departure',
-    eyebrow: '08 — Departure',
+    eyebrow: '09 — Departure',
     title: 'Leave it running',
     body: 'The light will go before she does. Close the door on the way out.',
     aim: 'Floor',
-    lift: 1.5,
-    from: [1.9, 0.7, 2.9],
+    lift: 1.55,
+    from: [2.00, 0.80, 3.05],
     fov: 56,
   },
 ]
 
 /**
  * When the model assembles, expressed in the same 0..1 scroll progress the
- * camera runs on. It is derived from where the 'model' shot sits in the
- * storyboard rather than hard-coded, so reordering the shots moves the build
- * along with its camera. The range ends just before the shot settles, so the
- * last piece lands as the camera arrives rather than after it.
+ * camera runs on. Derived from where the 'model' shot sits in the storyboard
+ * rather than hard-coded, so reordering the shots moves the build with its
+ * camera. The range ends just before the shot settles, so the last piece lands
+ * as the camera arrives rather than after it.
  */
 const MODEL_INDEX = SHOTS.findIndex((shot) => shot.id === 'model')
 const SEGMENT = 1 / (SHOTS.length - 1)
@@ -138,9 +131,6 @@ export const BUILD_RANGE = {
  * Turns the storyboard into world-space camera keyframes using the measured
  * focus points. Unknown group names fall back to the room centre rather than
  * throwing, so a renamed object degrades to a wide shot instead of a crash.
- *
- * `bounds` is optional; when passed, dev builds warn about any camera that
- * ends up outside the shell, which renders as an empty frame.
  */
 export function resolveShots(focus, bounds) {
   const floor = focus.get('Floor')

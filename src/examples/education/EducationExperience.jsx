@@ -197,6 +197,7 @@ function EducationExperience() {
               composition={composition}
               reducedMotion={reducedMotion}
               chapter={chapter}
+              focusDiscipline={hoveredDiscipline}
               onHoverChange={handleHoverChange}
             />
           </Suspense>

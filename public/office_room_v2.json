@@ -1,0 +1,336 @@
+{
+  "model": "office_room_v2.glb",
+  "source": "assets/source/construction-two/office_room_v2.blend",
+  "generatedBy": "assets/source/construction-two/build_room_v2.py",
+  "units": "metres, Y-up",
+  "note": "Node extras carry {group, order}; the loader reads those, not names.",
+  "shellSize": [
+    6.99,
+    3.59,
+    7.76
+  ],
+  "recentreOffset": [
+    0.085,
+    0.1,
+    -0.12
+  ],
+  "groups": {
+    "Bin": {
+      "count": 1,
+      "centre": [
+        1.945,
+        0.25,
+        -0.84
+      ],
+      "size": [
+        0.227,
+        0.3,
+        0.23
+      ]
+    },
+    "Building": {
+      "count": 14,
+      "centre": [
+        0.641,
+        1.188,
+        -1.42
+      ],
+      "size": [
+        0.606,
+        0.691,
+        0.647
+      ]
+    },
+    "Ceiling": {
+      "count": 4,
+      "centre": [
+        0.085,
+        3.35,
+        -0.72
+      ],
+      "size": [
+        6.5,
+        0.48,
+        6.0
+      ]
+    },
+    "Chair": {
+      "count": 4,
+      "centre": [
+        -0.262,
+        0.583,
+        -0.298
+      ],
+      "size": [
+        0.635,
+        0.969,
+        0.622
+      ]
+    },
+    "Credenza": {
+      "count": 8,
+      "centre": [
+        3.1,
+        1.049,
+        -2.17
+      ],
+      "size": [
+        0.49,
+        1.898,
+        2.14
+      ]
+    },
+    "Desk": {
+      "count": 3,
+      "centre": [
+        0.185,
+        0.471,
+        -1.41
+      ],
+      "size": [
+        3.04,
+        0.742,
+        1.02
+      ]
+    },
+    "Desktop": {
+      "count": 12,
+      "centre": [
+        0.03,
+        0.87,
+        -1.437
+      ],
+      "size": [
+        2.443,
+        0.056,
+        0.891
+      ]
+    },
+    "Figure": {
+      "count": 9,
+      "centre": [
+        -0.255,
+        0.719,
+        -0.657
+      ],
+      "size": [
+        0.52,
+        1.267,
+        1.011
+      ]
+    },
+    "Floor": {
+      "count": 2,
+      "centre": [
+        0.085,
+        0.055,
+        0.08
+      ],
+      "size": [
+        6.5,
+        0.11,
+        7.6
+      ]
+    },
+    "LightingElements": {
+      "count": 3,
+      "centre": [
+        1.329,
+        1.116,
+        -1.52
+      ],
+      "size": [
+        0.361,
+        0.547,
+        0.41
+      ]
+    },
+    "Pinboard": {
+      "count": 7,
+      "centre": [
+        -0.015,
+        1.92,
+        -3.672
+      ],
+      "size": [
+        4.56,
+        2.1,
+        0.046
+      ]
+    },
+    "Plant": {
+      "count": 3,
+      "centre": [
+        -2.578,
+        0.679,
+        -0.471
+      ],
+      "size": [
+        0.756,
+        1.159,
+        1.045
+      ]
+    },
+    "Skyline": {
+      "count": 4,
+      "centre": [
+        -8.68,
+        4.1,
+        -1.12
+      ],
+      "size": [
+        6.57,
+        15.0,
+        26.0
+      ]
+    },
+    "Walls": {
+      "count": 14,
+      "centre": [
+        0.085,
+        1.762,
+        0.0
+      ],
+      "size": [
+        6.82,
+        3.376,
+        7.76
+      ]
+    },
+    "Window": {
+      "count": 4,
+      "centre": [
+        -3.2,
+        1.866,
+        -0.77
+      ],
+      "size": [
+        0.59,
+        1.967,
+        3.8
+      ]
+    }
+  },
+  "building": [
+    "Bld_01_base",
+    "Bld_02_podium",
+    "Bld_Accent",
+    "Bld_03_plate",
+    "Bld_04_volume",
+    "Bld_05_plate",
+    "Bld_06_volume",
+    "Bld_07_plate",
+    "Bld_08_volume",
+    "Bld_09_plate",
+    "Bld_10_volume",
+    "Bld_11_core",
+    "Bld_12_roof",
+    "Bld_13_mast"
+  ],
+  "palette": {
+    "mat_wall_plaster": {
+      "lit": "#E7E1D6",
+      "shadow": "#B9B1A3"
+    },
+    "mat_wall_dark": {
+      "lit": "#2B2E34",
+      "shadow": "#1B1D21"
+    },
+    "mat_board": {
+      "lit": "#3C3E45",
+      "shadow": "#26282D"
+    },
+    "mat_ceiling": {
+      "lit": "#DCD5C8",
+      "shadow": "#B0A99B"
+    },
+    "mat_floor": {
+      "lit": "#7C6753",
+      "shadow": "#4B3D31"
+    },
+    "mat_floor_inlay": {
+      "lit": "#8E877C",
+      "shadow": "#655F56"
+    },
+    "mat_walnut": {
+      "lit": "#8B6A4B",
+      "shadow": "#54402D"
+    },
+    "mat_dark_metal": {
+      "lit": "#3A3D42",
+      "shadow": "#212328"
+    },
+    "mat_brushed_metal": {
+      "lit": "#A9ACB0",
+      "shadow": "#6C7075"
+    },
+    "mat_black": {
+      "lit": "#1B1D21",
+      "shadow": "#111216"
+    },
+    "mat_blue_accent": {
+      "lit": "#2F4E8F",
+      "shadow": "#1B2F5C"
+    },
+    "mat_paper": {
+      "lit": "#EDE8DE",
+      "shadow": "#C8C1B3"
+    },
+    "mat_model_white": {
+      "lit": "#F2EFE7",
+      "shadow": "#C6BFB1"
+    },
+    "mat_model_card": {
+      "lit": "#C2BAA9",
+      "shadow": "#968E7F"
+    },
+    "mat_glass": {
+      "lit": "#B4C4CE",
+      "shadow": "#93A6B4"
+    },
+    "mat_frosted_glass": {
+      "lit": "#C3D0DA",
+      "shadow": "#9EAEBB"
+    },
+    "mat_skin": {
+      "lit": "#DFC2A6",
+      "shadow": "#AE8B6F"
+    },
+    "mat_clothing_light": {
+      "lit": "#E5E0D4",
+      "shadow": "#B3AB9C"
+    },
+    "mat_clothing_dark": {
+      "lit": "#32353C",
+      "shadow": "#1E2025"
+    },
+    "mat_hair": {
+      "lit": "#3B332C",
+      "shadow": "#221D18"
+    },
+    "mat_plant": {
+      "lit": "#5B6A51",
+      "shadow": "#36402E"
+    },
+    "mat_soil": {
+      "lit": "#4A423A",
+      "shadow": "#332D27"
+    },
+    "mat_city_near": {
+      "lit": "#93A0AA",
+      "shadow": "#93A0AA"
+    },
+    "mat_city_far": {
+      "lit": "#BAC5CD",
+      "shadow": "#BAC5CD"
+    },
+    "mat_sky": {
+      "lit": "#DCE4E8",
+      "shadow": "#DCE4E8"
+    },
+    "mat_emissive_warm": {
+      "lit": "#FFD9A0",
+      "shadow": "#FFD9A0"
+    }
+  }
+}

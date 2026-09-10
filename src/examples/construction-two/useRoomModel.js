@@ -13,17 +13,22 @@ import { outlineMaterial, toonMaterialFor } from './toonMaterial.js'
 export { MODEL_URL }
 
 /**
- * Node names in this GLB read as "Grp_Desk_3": the middle is the group, the
- * trailing index only keeps names unique. Shots aim at those groups so camera
- * targets come from real geometry instead of copied coordinates.
+ * Which group a mesh belongs to.
  *
- * This walks up the tree rather than reading the mesh's own name, because a
- * node with several materials — the figure has five — becomes a Group holding
- * child meshes that GLTFLoader names after the glTF *mesh* ("Mesh001_2"), not
- * the node. Only the ancestor still carries the "Grp_" name.
+ * v2 of the model writes `group` into each node's glTF extras, which arrive as
+ * `object.userData.group` — an explicit contract set in Blender rather than
+ * something inferred from a name. The "Grp_Desk_3" fallback is what v1 used
+ * and is kept so the older asset still loads.
+ *
+ * Either way this walks up the tree rather than reading the mesh's own name: a
+ * node with several materials becomes a Group whose child meshes GLTFLoader
+ * names after the glTF *mesh* ("Mesh001_2"), and only the ancestor carries the
+ * group information.
  */
 function groupNameOf(object) {
   for (let node = object; node; node = node.parent) {
+    const tagged = node.userData?.group
+    if (typeof tagged === 'string' && tagged) return tagged
     const name = node.name ?? ''
     if (name.startsWith('Grp_')) return name.slice(4).replace(/(_\d+)+$/, '')
   }
@@ -31,14 +36,28 @@ function groupNameOf(object) {
 }
 
 /**
- * Loads the room, swaps in the two-tone materials, re-seats it so its
+ * Where a building piece sits in the assembly.
+ *
+ * v2 writes an explicit `order` into extras. v1 encoded it in the trailing
+ * number of the node name, which meant renaming a piece silently reordered the
+ * animation — the reason this is now read from userData first.
+ */
+function assemblyOrderOf(object) {
+  for (let node = object; node; node = node.parent) {
+    const tagged = node.userData?.order
+    if (typeof tagged === 'number' && Number.isFinite(tagged)) return tagged
+  }
+  return Number(object.name.match(/_(\d+)$/)?.[1] ?? 0)
+}
+
+/**
+ * Loads the studio, swaps in the stylised materials, re-seats it so its
  * footprint is centred on the origin with the floor at y = 0, and measures a
  * focus point per object group.
  *
- * The re-seating deliberately ignores the skyline: those cards sit outside
- * the window, several metres past the wall, and letting them into the bounds
- * would drag the whole room off-centre. Outline shells are ignored for the
- * same measurement because they duplicate geometry that is already counted.
+ * The re-seating deliberately ignores the skyline: those cards sit outside the
+ * window, several metres past the wall, and letting them into the bounds would
+ * drag the whole room off-centre.
  *
  * useGLTF caches by URL, so every caller shares one scene. Both the material
  * swap and the re-seating are idempotent, so calling this from more than one
@@ -48,7 +67,7 @@ export function useRoomModel() {
   const { scene } = useGLTF(MODEL_URL)
 
   return useMemo(() => {
-    const outline = outlineMaterial()
+    let outline = null
 
     scene.traverse((object) => {
       if (!object.isMesh) return
@@ -59,14 +78,15 @@ export function useRoomModel() {
       if (object.material?.userData?.toon) {
         // Already swapped on an earlier pass; nothing to do.
       } else if (isOutline) {
+        // Optional: v2 ships clean geometry with no inverted-hull shells, so
+        // this only runs if a model that has them is loaded.
+        outline = outline ?? outlineMaterial()
         object.material = outline
       } else {
         const replacement = toonMaterialFor(object.material?.name ?? '')
         if (replacement) object.material = replacement
       }
 
-      // Outline shells would thicken every shadow they touch, and the skyline
-      // sits outside the window where it would block the sun from entering.
       const participates = !UNSHADOWED_GROUPS.has(group)
       object.castShadow = participates && !SHADOW_RECEIVERS_ONLY.has(group)
       object.receiveShadow = participates
@@ -99,16 +119,12 @@ export function useRoomModel() {
 
       if (key !== BUILDING_GROUP) return
 
-      // Assembly order is baked into the node name: the Blender pieces were
-      // numbered bottom-up, so Grp_Building_1 is the base plate.
-      const order = Number(object.name.match(/_(\d+)$/)?.[1] ?? 0)
-
       object.geometry.computeBoundingBox()
       const local = object.geometry.boundingBox
       const height = Math.max(local.max.y - local.min.y, 1e-4)
 
       building.push({
-        order,
+        order: assemblyOrderOf(object),
         mesh: object,
         height,
         // Where the piece's underside sits in its parent's space, so it can be
@@ -137,9 +153,10 @@ export function useRoomModel() {
     if (import.meta.env.DEV) {
       const describe = (v) => v.toArray().map((n) => n.toFixed(2)).join(', ')
       console.info('[room] shell size:', describe(size), '| building pieces:', building.length)
+      console.info('[room] assembly:', building.map((p) => `${p.order}:${p.mesh.name}`).join(' '))
       for (const [key, box] of [...groups].sort()) {
         console.info(
-          `[room] ${key.padEnd(9)} centre ${describe(box.getCenter(new THREE.Vector3()))}`,
+          `[room] ${key.padEnd(17)} centre ${describe(box.getCenter(new THREE.Vector3()))}`,
           `| size ${describe(box.getSize(new THREE.Vector3()))}`,
         )
       }

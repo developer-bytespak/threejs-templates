@@ -32,6 +32,40 @@ export function windowed(value, a, b, c, d) {
  * Writes derived weights into `target` rather than returning a new object:
  * this runs every frame and the loop should not allocate.
  */
+/**
+ * Progress mapped to the world height the growth front has reached.
+ *
+ * The tree runs from y = -0.3 (root tips) to y = 21.9 (crown), and this walks
+ * that range in the order the brief asks for: seed, roots, trunk in thirds,
+ * primary branches, secondary, discipline tips, canopy. Past the last stop it
+ * clears the crown, so the gate stops constraining anything.
+ */
+const GROWTH_CURVE = [
+  [0.0, -0.75],
+  [0.03, 0.85],
+  [0.07, 2.1],
+  [0.11, 4.6],
+  [0.14, 7.2],
+  [0.17, 10.2],
+  [0.21, 13.2],
+  [0.25, 16.2],
+  [0.3, 19.6],
+  [0.36, 24.0],
+]
+
+export function growthHeightFor(progress) {
+  const p = clamp01(progress)
+  if (p >= GROWTH_CURVE[GROWTH_CURVE.length - 1][0]) return 1e6
+  let i = 0
+  while (i < GROWTH_CURVE.length - 2 && p > GROWTH_CURVE[i + 1][0]) i += 1
+  const [a, ha] = GROWTH_CURVE[i]
+  const [b, hb] = GROWTH_CURVE[i + 1]
+  const t = b === a ? 0 : (p - a) / (b - a)
+  // Smoothstepped, so the front eases through each stage rather than
+  // travelling at a constant rate and reading as a mechanical wipe.
+  return ha + (hb - ha) * (t * t * (3 - 2 * t))
+}
+
 export function deriveStage(progress, target = {}) {
   const p = clamp01(progress)
   target.progress = p
@@ -40,15 +74,21 @@ export function deriveStage(progress, target = {}) {
   // Growth ranges overlap their neighbours so the tree never finishes one
   // part before starting the next — that overlap is what makes it read as
   // growth rather than as a sequence of parts switching on.
-  target.seedOpen = ramp(p, 0.015, 0.075)
-  target.rootGrowth = ramp(p, 0.05, 0.15)
-  target.trunkGrowth = ramp(p, 0.1, 0.21)
-  target.branchGrowth = ramp(p, 0.19, 0.33)
-  target.leafReveal = ramp(p, 0.19, 0.31)
-  target.veinFlow = ramp(p, 0.08, 0.3)
+  target.seedOpen = ramp(p, 0.01, 0.05)
+  target.rootGrowth = ramp(p, 0.03, 0.09)
+  target.trunkGrowth = ramp(p, 0.06, 0.17)
+  target.branchGrowth = ramp(p, 0.15, 0.3)
+  target.leafReveal = ramp(p, 0.26, 0.36)
+  target.veinFlow = ramp(p, 0.06, 0.28)
+  // The height the growth front has reached. Every part of the tree is gated
+  // on this as well as on its own weight, which is what guarantees the order:
+  // a branch cannot appear before the front has climbed to its junction, and
+  // a leaf cannot appear before the branch under it.
+  target.growthHeight = growthHeightFor(p)
 
   // --- the artifacts ------------------------------------------------------
-  target.artifactReveal = ramp(p, 0.2, 0.3)
+  // Only once the canopy that holds them exists.
+  target.artifactReveal = ramp(p, 0.32, 0.42)
   target.museumProgress = span(p, 0.39, 0.58)
   // Deep in the canopy there is nothing to light the artifacts by, so the
   // museum carries its own travelling fill.
@@ -103,6 +143,7 @@ export function createStageState() {
     pointerX: 0,
     pointerY: 0,
     hoveredDiscipline: null,
+    pointerDiscipline: null,
     hoveredBuilding: null,
   })
 }

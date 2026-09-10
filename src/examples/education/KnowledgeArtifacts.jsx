@@ -2,7 +2,15 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { DISCIPLINES } from './chapters.js'
-import { setFade } from './revealMaterial.js'
+import { setEmphasis, setOpacity } from './revealMaterial.js'
+
+/**
+ * Focus balance for the props, as brightness ratios, matching the branches.
+ * An artifact outside the focused discipline steps back far enough to read as
+ * secondary and nowhere near far enough to read as switched off.
+ */
+const ACTIVE_ARTIFACT = 1.06
+const INACTIVE_ARTIFACT = 0.82
 
 /**
  * The educational objects held in the branches.
@@ -79,9 +87,21 @@ function KnowledgeArtifacts({ rig, stage, quality, interactive, onHoverArtifact 
         0,
         1,
       )
-      const dim = focus && focus !== entry.id ? 0.4 : 1
-      entry.group.visible = weight > 0.01
-      setFade(entry.materials, weight * dim)
+      entry.group.visible = weight > 0.005
+      // A straight opacity fade. This used to be a dithered discard, which
+      // crawled over the surfaces as animated speckle and made the props look
+      // unstable rather than revealed.
+      setOpacity(entry.materials, weight)
+
+      // Focus, not suppression: an unfocused artifact steps back a little and
+      // stays completely readable.
+      const wanted = focus
+        ? focus === entry.id
+          ? ACTIVE_ARTIFACT
+          : INACTIVE_ARTIFACT
+        : 1
+      entry.emphasis = THREE.MathUtils.damp(entry.emphasis ?? 1, wanted, 5, step)
+      setEmphasis(entry.materials, entry.emphasis)
     }
 
     for (const hero of store.heroes) {
@@ -109,7 +129,7 @@ function KnowledgeArtifacts({ rig, stage, quality, interactive, onHoverArtifact 
       for (const material of hero.emissives) {
         material.emissiveIntensity = THREE.MathUtils.damp(
           material.emissiveIntensity ?? 1,
-          isHovered ? 3.2 : 1.1,
+          isHovered ? 2.4 : 1.1,
           6,
           step,
         )

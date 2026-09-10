@@ -10,8 +10,13 @@ import * as THREE from 'three'
  * front. The front carries a thin emissive band, which is what sells it as
  * something advancing rather than something being uncovered.
  *
- * The boundary is jittered per-fragment by a cheap hash so it breaks into
- * bark and leaf rather than sweeping past as a clean geometric plane.
+ * Everything that removes fragments here is quantised to a fixed grid in world
+ * space (see `eduCell`). A per-fragment hash breaks the boundary up nicely on
+ * paper, but on a canopy of small leaves it dissolves each leaf into a cloud of
+ * dots, and because the hash is evaluated per pixel the pattern crawls across
+ * the surface as the camera moves. Snapping it to a grid the geometry sits
+ * still in means a leaf is either revealed or it is not, the front still breaks
+ * up organically, and nothing shimmers.
  *
  * Three metrics, because the parts of a tree do not grow the same way:
  *
@@ -38,12 +43,27 @@ export function attachReveal(material, mode, settings) {
     uRevealJitter: { value: options.jitter ?? 0.55 },
     uRevealGlow: { value: new THREE.Color(options.glow ?? '#ff9d43') },
     uRevealGlowStrength: { value: options.glowStrength ?? 2.4 },
-    // Lets a whole group dim without touching its authored colours.
+    // Cells per world unit for every dissolve on this material. Coarse enough
+    // that one element of the mesh falls inside one cell: a leaf wants cells
+    // around half a metre so it resolves whole, a building wants far finer or
+    // the dissolve reads as masonry dropping off the wall.
+    uEduCell: { value: options.cell ?? 5 },
+    // Lets a whole group dissolve away without touching its authored colours.
     uEduFade: { value: 1 },
     // Distance from the lens within which fragments dissolve. Foliage the
     // camera is flying through otherwise fills the frame with leaves that are
     // too close to read as anything.
     uEduNear: { value: 0 },
+    // World height the growth front has reached. Defaults past everything, so
+    // a material nobody drives is simply fully drawn — only the tree opts in.
+    uGrowthHeight: { value: 1e6 },
+    uGrowthSoft: { value: 0.7 },
+    // Emphasis, for focus states. Read it as a straight brightness ratio: 1 is
+    // full presence, 0.75 is a group that has stepped back, above 1 brings a
+    // group forward. Deliberately separate from uEduFade — fading removes
+    // fragments, and using that to de-emphasise makes a branch look like it is
+    // disintegrating rather than receding.
+    uEduEmphasis: { value: 1 },
   }
 
   const metric = METRIC[mode] ?? METRIC.up
@@ -76,37 +96,71 @@ export function attachReveal(material, mode, settings) {
         uniform float uRevealJitter;
         uniform vec3 uRevealGlow;
         uniform float uRevealGlowStrength;
+        uniform float uEduCell;
         uniform float uEduFade;
-        uniform float uEduNear;`,
+        uniform float uEduNear;
+        uniform float uGrowthHeight;
+        uniform float uGrowthSoft;
+        uniform float uEduEmphasis;
+
+        // One value per cell of world space, so every fragment of the same leaf
+        // agrees on it and it does not move when the camera does.
+        float eduCell(float scale) {
+          vec3 cell = floor(vEduWorld * (uEduCell * scale));
+          return fract(sin(dot(cell, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+        }`,
       )
       .replace(
         '#include <clipping_planes_fragment>',
         `#include <clipping_planes_fragment>
+        // The growth front, as a hard ceiling on world height. Each group also
+        // has its own front travelling along its own axis, but this is what
+        // guarantees the order: no geometry, of any group, can be drawn above
+        // the height the tree has actually grown to. Broken up per cell so the
+        // ceiling reads as bark and leaf rather than as a level plane.
+        if (vEduWorld.y - eduCell(0.83) * uGrowthSoft > uGrowthHeight) discard;
+
         float eduMetric = ${metric};
-        float eduDelta = eduMetric - uRevealEdge;
-        // Breaking the boundary up per-fragment stops it reading as a plane
-        // sweeping through solid geometry.
-        float eduHash = fract(sin(dot(vEduWorld.xz + vEduWorld.y, vec2(12.9898, 78.233))) * 43758.5453);
-        eduDelta -= (eduHash - 0.5) * uRevealJitter;
+        // Two deltas: the smooth one places the glow, the jittered one decides
+        // what is drawn. Lighting the band off the jittered value instead
+        // paints the cell grid straight onto the front as a checkerboard.
+        float eduDeltaSmooth = eduMetric - uRevealEdge;
+        // The same trick on the group's own front, so it advances element by
+        // element instead of sweeping through solid geometry as a plane.
+        float eduDelta = eduDeltaSmooth - (eduCell(1.0) - 0.5) * uRevealJitter;
         if (eduDelta > 0.0) discard;
         if (uEduNear > 0.0 && vEduDepth < uEduNear) {
-          // Dissolve rather than clip: a hard near plane cuts leaves in half
-          // mid-frame, which is far more noticeable than them thinning out.
+          // Whole leaves drop out as they approach the lens. A hard near plane
+          // cuts them in half mid-frame, and a per-pixel dissolve turns the
+          // canopy into grain — this removes them one leaf at a time.
           float eduNearMask = smoothstep(uEduNear * 0.3, uEduNear, vEduDepth);
-          float eduNearNoise = fract(sin(dot(gl_FragCoord.xy, vec2(23.14, 61.7))) * 9137.13);
-          if (eduNearNoise > eduNearMask) discard;
+          if (eduCell(0.61) > eduNearMask) discard;
         }
         if (uEduFade < 0.999) {
-          // Dithered fade: these are opaque materials, and turning the whole
-          // canopy transparent to dim it would cost far more than it is worth.
-          float eduDither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
-          if (eduDither > uEduFade) discard;
+          // Dissolve, for groups that are not on screen long enough to be worth
+          // the cost of real transparency. Cell-quantised for the same reason
+          // as everything else here: a screen-space dither crawls.
+          if (eduCell(1.37) > uEduFade) discard;
         }`,
+      )
+      // Applied to the resolved lighting, just before it is written out, so a
+      // de-emphasised group keeps every fragment it had — it simply sits
+      // further back in the frame.
+      .replace(
+        '#include <opaque_fragment>',
+        `if (uEduEmphasis < 0.999 || uEduEmphasis > 1.001) {
+          float eduLum = dot(outgoingLight, vec3(0.2126, 0.7152, 0.0722));
+          // Desaturated only in proportion to how far it has stepped back, so a
+          // quiet branch keeps its own colour instead of turning grey.
+          float eduSat = min(1.0, mix(0.6, 1.0, uEduEmphasis));
+          outgoingLight = mix(vec3(eduLum), outgoingLight, eduSat) * uEduEmphasis;
+        }
+        #include <opaque_fragment>`,
       )
       .replace(
         '#include <emissivemap_fragment>',
         `#include <emissivemap_fragment>
-        float eduFront = smoothstep(-uRevealBand, 0.0, eduDelta);
+        float eduFront = smoothstep(-uRevealBand, 0.0, eduDeltaSmooth);
         totalEmissiveRadiance += uRevealGlow * eduFront * uRevealGlowStrength;`,
       )
   }
@@ -132,6 +186,37 @@ export function setFade(materials, fade) {
   for (let i = 0; i < materials.length; i += 1) {
     const uniforms = materials[i].userData.eduReveal
     if (uniforms) uniforms.uEduFade.value = fade
+  }
+}
+
+/**
+ * Focus state, as a straight brightness ratio. 1 is full presence, 0.75 is a
+ * group that has stepped back but is plainly still there, above 1 brings a
+ * group forward.
+ */
+export function setEmphasis(materials, emphasis) {
+  for (let i = 0; i < materials.length; i += 1) {
+    const uniforms = materials[i].userData.eduReveal
+    if (uniforms) uniforms.uEduEmphasis.value = emphasis
+  }
+}
+
+/**
+ * Real opacity, for the objects that can afford it. The dissolve above is the
+ * right trade for a canopy of hundreds of leaf materials; on a hero prop it
+ * removes parts of a solid object, which is the one thing these props must
+ * never look like they are doing.
+ */
+export function setOpacity(materials, opacity) {
+  for (let i = 0; i < materials.length; i += 1) {
+    materials[i].opacity = opacity
+  }
+}
+
+export function setGrowthHeight(materials, height) {
+  for (let i = 0; i < materials.length; i += 1) {
+    const uniforms = materials[i].userData.eduReveal
+    if (uniforms) uniforms.uGrowthHeight.value = height
   }
 }
 

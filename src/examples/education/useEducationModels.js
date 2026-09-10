@@ -70,6 +70,22 @@ function rigGroup(root, mode, options) {
   return { meshes, materials }
 }
 
+/**
+ * Opts a group into real transparency.
+ *
+ * Done here, once, rather than at runtime: flipping `transparent` forces a
+ * shader recompile, which is not something to do on a frame. depthWrite stays
+ * on — these are solid objects that must keep occluding each other correctly
+ * once they are up to full opacity.
+ */
+function makeFadeable(materials) {
+  for (const material of materials) {
+    material.transparent = true
+    material.depthWrite = true
+    material.needsUpdate = true
+  }
+}
+
 /** Largest value the reveal metric takes over a group, from its bounds. */
 function metricRange(box, mode, origin) {
   if (mode === 'up') return [box.min.y, box.max.y]
@@ -111,8 +127,8 @@ function buildRig(tree, artifacts, campus) {
     return entry
   }
 
-  addGrower('roots', 'out', null, { band: 0.9, jitter: 0.5 })
-  addGrower('trunk', 'up', null, { band: 1.2, jitter: 0.6 })
+  addGrower('roots', 'out', null, { band: 0.9, jitter: 0.5, cell: 12 })
+  addGrower('trunk', 'up', null, { band: 1.2, jitter: 0.6, cell: 12 })
 
   // Branches and their leaves push outward from where they meet the trunk,
   // so the origin sits on the trunk axis at the group's base height.
@@ -124,6 +140,7 @@ function buildRig(tree, artifacts, campus) {
     const branch = addGrower(discipline.branch, 'point', branchOrigin, {
       band: 1.4,
       jitter: 0.7,
+      cell: 12,
     })
     const leaves = addGrower(discipline.leaves, 'point', branchOrigin, {
       // A narrower, less jittered front than the branches use. Leaves are
@@ -132,6 +149,11 @@ function buildRig(tree, artifacts, campus) {
       band: 1.1,
       jitter: 0.55,
       glowStrength: 0.45,
+      // Half-metre cells, which is about one leaf: anything finer splits a
+      // single leaf across several cells and the canopy resolves as dots.
+      // The branches go the other way — they are smooth and large, so cells
+      // this coarse turn their reveal front into visible square blocks.
+      cell: 2,
     })
     if (!branch) continue
     box.setFromObject(branch.group)
@@ -147,16 +169,23 @@ function buildRig(tree, artifacts, campus) {
     }
   }
 
-  addGrower('secondary_branches', 'point', branchOrigin, { band: 1.6, jitter: 0.8 })
+  addGrower('secondary_branches', 'point', branchOrigin, {
+    band: 1.6,
+    jitter: 0.8,
+    cell: 12,
+  })
 
   const seed = tree.getObjectByName('seed')
   const seedShell = seed?.getObjectByName('seed_shell') ?? null
-  const seedRig = seed ? rigGroup(seed, 'up', { glowStrength: 0 }) : null
+  const seedRig = seed ? rigGroup(seed, 'up', { glowStrength: 0, cell: 12 }) : null
   box.setFromObject(seed ?? tree)
   const seedCentre = box.getCenter(new THREE.Vector3())
 
   const motes = tree.getObjectByName('ambient_details')
-  const moteRig = motes ? rigGroup(motes, 'up', { glowStrength: 0 }) : null
+  const moteRig = motes ? rigGroup(motes, 'up', { glowStrength: 0, cell: 12 }) : null
+  // The motes fade with real opacity too: they are a handful of small specks,
+  // and dissolving them makes them flicker rather than fade.
+  if (moteRig) makeFadeable(moteRig.materials)
 
   // --- artifacts -----------------------------------------------------------
   const artifactRoot = artifacts.getObjectByName('knowledge_artifacts') ?? artifacts
@@ -164,7 +193,10 @@ function buildRig(tree, artifacts, campus) {
   for (const discipline of DISCIPLINES) {
     const group = artifactRoot.getObjectByName(discipline.artifacts)
     if (!group) continue
-    const { materials } = rigGroup(group, 'point', { glowStrength: 0 })
+    // Hero props are few enough to afford real transparency, so their reveal
+    // is a clean opacity fade rather than a dissolve.
+    const { materials } = rigGroup(group, 'point', { glowStrength: 0, cell: 6 })
+    makeFadeable(materials)
     artifactGroups[discipline.id] = { group, materials }
   }
 
@@ -190,6 +222,9 @@ function buildRig(tree, artifacts, campus) {
   const campusRoot = campus.getObjectByName('canopy_campus') ?? campus
   const { materials: campusMaterials } = rigGroup(campusRoot, 'up', {
     glowStrength: 0,
+    // Buildings are large and flat, so their dissolve wants cells small enough
+    // to read as grain at distance rather than as masonry falling off a wall.
+    cell: 14,
   })
   const campusEmissive = campusMaterials.filter(
     (material) => material.emissive && material.emissive.getHex() > 0,

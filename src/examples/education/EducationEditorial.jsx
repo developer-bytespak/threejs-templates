@@ -250,17 +250,23 @@ function Future({ active, onNavigate }) {
     { label: 'Visit campus', target: 'reveal' },
   ]
 
+  // One column, in front of the scene rather than behind it. The closing shot
+  // is the campus filling the frame edge to edge, so a headline sitting behind
+  // it gets eaten: the previous three-line phrase survived as "You" and "ch".
+  // Two lines and a quiet supporting line fit the space that is actually
+  // available, and the actions belong to the same column so they read as the
+  // end of one thought rather than as furniture in the corner.
   return (
-    <>
-      <div className="edu-layer edu-layer--behind" data-active={active}>
+    <div className="edu-layer edu-layer--front" data-active={active}>
+      <div className="edu-final__veil" aria-hidden="true" />
+
+      <div className="edu-final">
         <p className="edu-final__type">
           <span>Your next</span>
           <span>chapter</span>
-          <span>starts here.</span>
         </p>
-      </div>
+        <p className="edu-final__sub">Starts here.</p>
 
-      <div className="edu-layer edu-layer--front" data-active={active}>
         <div className="edu-actions">
           {actions.map((action) => (
             <button
@@ -286,7 +292,7 @@ function Future({ active, onNavigate }) {
           ))}
         </div>
       </div>
-    </>
+    </div>
   )
 }
 

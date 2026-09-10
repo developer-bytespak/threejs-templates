@@ -7,7 +7,9 @@
 
   position: relative;
   color: var(--ink);
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  /* Helvetica throughout. Hierarchy comes from size, weight, tracking, casing
+     and opacity — never from a second typeface. */
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   cursor: auto;
 }
 
@@ -303,7 +305,7 @@
 
 .edu-count__value {
   font-size: clamp(3.5rem, 9vw, 8rem);
-  font-weight: 200;
+  font-weight: 300;
   line-height: 0.78;
   letter-spacing: -0.05em;
   color: rgba(242, 239, 233, 0.9);
@@ -327,7 +329,7 @@
   translate: 0 -50%;
   margin: 0;
   font-size: clamp(6rem, 22vw, 22rem);
-  font-weight: 200;
+  font-weight: 300;
   line-height: 0.8;
   letter-spacing: -0.06em;
   /* Ghosted rather than solid: it sits over the canopy, and at full strength
@@ -381,7 +383,7 @@
 .edu-panel__num {
   margin: 6px 0 22px;
   font-size: 3rem;
-  font-weight: 200;
+  font-weight: 300;
   line-height: 1;
   letter-spacing: -0.04em;
 }
@@ -412,7 +414,7 @@
 .edu-rotated__word {
   margin: 0;
   font-size: clamp(4rem, 13vw, 12rem);
-  font-weight: 200;
+  font-weight: 300;
   line-height: 0.82;
   letter-spacing: -0.05em;
 }
@@ -466,7 +468,7 @@
 .edu-corner__word {
   margin: 0;
   font-size: clamp(2.6rem, 6vw, 5rem);
-  font-weight: 200;
+  font-weight: 300;
   line-height: 0.9;
   letter-spacing: -0.04em;
 }
@@ -485,7 +487,7 @@
   translate: 0 -50%;
   margin: 0;
   font-size: clamp(2.6rem, 8.5vw, 9rem);
-  font-weight: 200;
+  font-weight: 300;
   line-height: 0.86;
   letter-spacing: -0.05em;
   white-space: nowrap;
@@ -542,7 +544,7 @@
 
 .edu-fact__value {
   font-size: clamp(1.9rem, 3.6vw, 3.2rem);
-  font-weight: 200;
+  font-weight: 300;
   line-height: 1;
   letter-spacing: -0.04em;
 }
@@ -625,39 +627,77 @@
 
 /* --- 08 the ending -------------------------------------------------------- */
 
-.edu-final__type {
+/* The closing shot is the campus filling the frame, so there is no dark corner
+   for the headline to occupy — it has to be given one. This is a soft wash off
+   the left edge rather than a panel: elliptical falloff reads as light leaving
+   that side of the frame, and the campus is still faintly present inside it,
+   so the ending is one composition rather than type parked on a black bar. */
+.edu-final__veil {
+  position: absolute;
+  /* Overshoots the viewport, so the layer's settle never uncovers an edge. */
+  inset: -40px auto -40px -40px;
+  width: min(62%, 920px);
+  /* Sized to exactly 100% of the box on the horizontal, so the wash reaches
+     zero before its own edge. An ellipse wider than the element gets cut off
+     mid-falloff and leaves a vertical seam down a bright building. */
+  background: radial-gradient(
+    100% 132% at 0% 50%,
+    rgba(6, 8, 12, 0.93) 0%,
+    rgba(6, 8, 12, 0.86) 30%,
+    rgba(6, 8, 12, 0.55) 58%,
+    rgba(6, 8, 12, 0.2) 80%,
+    rgba(6, 8, 12, 0) 100%
+  );
+}
+
+/* Headline, supporting line and actions as one left column, so the CTA reads
+   as the end of the sentence rather than as furniture in the corner. */
+.edu-final {
   position: absolute;
   left: clamp(16px, 4vw, 72px);
-  top: 40%;
+  top: 50%;
   translate: 0 -50%;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  font-size: clamp(3rem, 10.5vw, 11rem);
-  font-weight: 200;
-  line-height: 0.85;
-  letter-spacing: -0.05em;
-  color: rgba(246, 242, 234, 0.9);
-}
-
-.edu-final__type span:nth-child(2) {
-  margin-left: 5vw;
-}
-
-.edu-final__type span:nth-child(3) {
-  margin-left: 11vw;
-}
-
-/* Under the closing phrase rather than opposite it: the tree owns the right
-   half of the final frame. */
-.edu-actions {
-  position: absolute;
-  left: clamp(16px, 4vw, 72px);
-  bottom: clamp(52px, 12vh, 118px);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  width: min(42vw, 560px);
+}
+
+.edu-final__type {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  /* Large enough to close the piece, small enough to stay inside its own
+     column. The previous 11rem ceiling put the phrase straight through the
+     middle of the campus. */
+  font-size: clamp(2.5rem, 6.3vw, 6.25rem);
+  font-weight: 300;
+  line-height: 0.94;
+  letter-spacing: -0.045em;
+  color: rgba(246, 242, 234, 0.96);
+}
+
+.edu-final__sub {
+  margin: clamp(16px, 2.2vh, 28px) 0 0;
+  font-size: clamp(1rem, 1.45vw, 1.3rem);
+  font-weight: 300;
+  letter-spacing: 0.005em;
+  /* A step above --muted: this line sits over the campus, not over the page,
+     and at the shared muted value it read as faded rather than as quiet. */
+  color: rgba(242, 239, 233, 0.68);
+}
+
+/* A hairline, not a gap: it separates the actions from the phrase without
+   making them a box. */
+.edu-actions {
+  align-self: stretch;
+  margin-top: clamp(26px, 4.4vh, 54px);
+  padding-top: clamp(18px, 2.8vh, 32px);
+  border-top: 1px solid var(--faint);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
 }
 
 /* Line-based, not filled rectangles: a rule that draws itself under the label
@@ -755,6 +795,7 @@
   gap: 10px;
   color: var(--ink);
   font-size: 0.8125rem;
+  font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   text-decoration: none;
@@ -781,6 +822,7 @@
   color: var(--muted);
   font: inherit;
   font-size: 0.75rem;
+  font-weight: 500;
   letter-spacing: 0.12em;
   cursor: pointer;
   transition: color 0.3s ease;
@@ -1140,17 +1182,28 @@
     top: clamp(84px, 15vh, 140px);
   }
 
-  .edu-actions {
+  /* Narrow frames have no left third to give away, so the wash covers the
+     whole width and the column sits low against it. */
+  .edu-final__veil {
+    inset: auto -40px -40px -40px;
+    width: auto;
+    height: min(78%, 720px);
+    background: linear-gradient(
+      180deg,
+      rgba(6, 8, 12, 0) 0%,
+      rgba(6, 8, 12, 0.42) 26%,
+      rgba(6, 8, 12, 0.84) 58%,
+      rgba(6, 8, 12, 0.94) 100%
+    );
+  }
+
+  .edu-final {
     left: clamp(20px, 6vw, 40px);
     right: clamp(20px, 6vw, 40px);
-  }
-
-  .edu-final__type span:nth-child(2) {
-    margin-left: 5vw;
-  }
-
-  .edu-final__type span:nth-child(3) {
-    margin-left: 11vw;
+    top: auto;
+    bottom: clamp(44px, 9vh, 96px);
+    translate: 0 0;
+    width: auto;
   }
 
   .edu__scrim {

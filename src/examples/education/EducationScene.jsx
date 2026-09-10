@@ -21,6 +21,7 @@ function EducationScene({
   composition,
   reducedMotion,
   chapter,
+  focusDiscipline,
   onHoverChange,
 }) {
   const rig = useEducationModels()
@@ -35,8 +36,8 @@ function EducationScene({
   // to React so the HTML layer can show a label for it, but only on change —
   // that is a user-paced event, not a per-frame one.
   const setHoveredDiscipline = (id) => {
-    if (stage.current.hoveredDiscipline === id) return
-    stage.current.hoveredDiscipline = id
+    if (stage.current.pointerDiscipline === id) return
+    stage.current.pointerDiscipline = id
     onHoverChange({ kind: 'discipline', id })
   }
 
@@ -73,6 +74,10 @@ function EducationScene({
       step,
     )
     deriveStage(s.smoothed, s)
+
+    // The discipline list in the HTML and the pointer over the branches are
+    // two ways of asking for the same thing, so they resolve to one focus.
+    s.hoveredDiscipline = focusDiscipline ?? s.pointerDiscipline ?? null
 
     if (reducedMotion) {
       s.pointerX = 0

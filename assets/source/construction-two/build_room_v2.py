@@ -175,91 +175,359 @@ mk(bm, "Win_Sheen", MAT["sheen"], C["Window"], "Window")
 # value lighter toward the sky, which is the only atmospheric perspective a flat
 # unlit palette can offer — and it is what turns grey boxes into distance.
 #
-# Placement is not guesswork: the sight cone was projected from all six cameras
-# that can see the window, through the 3.50 x 1.90 m opening, onto each band.
+# Placement is not guesswork. The sight cone was re-projected from the five
+# CAMERA_KEYFRAMES that can actually see the window (0.000 wide establishing,
+# 0.120 desk approach, 0.320 the SITE. window shot, 0.400 over-the-shoulder and
+# 1.000 the closing wide), through the 3.50 x 1.90 m opening, onto each band:
 #
-#   x = -6    y -2.3 .. 5.2     z -0.1 .. 3.5
-#   x = -10   y -4.1 .. 9.3     z -1.5 .. 4.7
-#   x = -16   y -6.8 .. 15.4    z -3.6 .. 6.4
-#   x = -24   y -10.4 .. 23.6   z -6.4 .. 8.6
+#   x = -6    y -1.5 .. 5.4     z -0.1 .. 3.5
+#   x = -10   y -2.0 .. 9.8     z -1.5 .. 4.6
+#   x = -16   y -2.7 .. 16.4    z -3.5 .. 6.2
+#   x = -24   y -3.8 .. 25.2    z -6.3 .. 8.3
 #
 # Every band drops well below its own lower sightline, so you can look down a
 # gap between two near towers and find another building there, never a void.
+#
+# ---- what actually draws, and why this band is modelled the way it is
+#
+# Every exterior material is in UNLIT_MATERIALS on the web side: the toon shader
+# returns uLit and ignores the normal entirely, and Skyline is in
+# UNSHADOWED_GROUPS so nothing casts onto it either. A whole band therefore
+# renders as ONE flat colour. Relief that relies on shading — a mullion standing
+# proud of a wall, a slab under a balcony, a parapet seen face-on — is invisible
+# out there, whatever it looks like in Blender's viewport.
+#
+# So the facades are built from the only two things that survive:
+#
+#   silhouette    the outline of a band against the paler band behind it, or
+#                 against the sky. Rooflines, setbacks, crowns, plant, the
+#                 projection of a balcony past a corner.
+#   mat_city_glass  a full value step darker than any band, so a glazed zone is
+#                 a dark shape on a light ground. This is the facade drawing.
+#
+# Every glazed zone therefore stands 12 mm proud of the wall it sits in — flush
+# would z-fight — and anything meant to read as a mullion is a strip of the wall
+# material standing proud of the glass in front of it, light over dark. That is
+# the whole vocabulary: dark bays, light ribs between them, and a roofline.
+#
+# The near band is composed for the four panes of the SITE. shot specifically,
+# whose mullions project onto x = -6 at y = 0.19, 1.84 and 3.49:
+#
+#   pane 1  -1.45 .. 0.19   a residential tower, cut by the jamb — depth, not a
+#                           whole object, so the city reads as continuing past
+#   pane 2   0.19 .. 1.84   the curtain-wall office: the one building you read
+#                           properly, and the anchor of the composition
+#   pane 3   1.84 .. 3.49   held open. Low occupied roofs at the bottom, then
+#                           the mid and far bands: this is where it gets distance
+#   pane 4   3.49 .. 5.14   the stepped masonry block, with a slender mixed-use
+#                           tower rising behind its roofline
+#
+# No building edge is allowed to land on a mullion — an edge hidden behind one
+# reads as a modelling accident. Where a form crosses a mullion it crosses with
+# its body, which is what ties the four panes into one view.
 
-def tower(bm, x0, x1, y0, y1, ztop, zbase, bev=0.012,
-          setback=None, cap=None, mast=0.0, plant=()):
-    """One massing block: body, optional setback, roof cap, mast, roof plant."""
-    box(bm, (x1-x0, y1-y0, ztop-zbase), loc=((x0+x1)/2, (y0+y1)/2, (ztop+zbase)/2), bevel=bev)
-    z = ztop
-    if setback:                                  # (inset, height)
-        ins, h = setback
-        box(bm, (x1-x0-ins*2, y1-y0-ins*2, h), loc=((x0+x1)/2, (y0+y1)/2, z + h/2), bevel=bev)
-        z += h
-    if cap:                                      # (overhang, thickness)
-        ov, t = cap
-        box(bm, (x1-x0+ov*2, y1-y0+ov*2, t), loc=((x0+x1)/2, (y0+y1)/2, z + t/2), bevel=bev*0.6)
-        z += t
-    for (fx, fy, w, d, h) in plant:              # roof plant, in 0..1 face coords
-        cx = x0 + (x1-x0)*fx; cy = y0 + (y1-y0)*fy
-        box(bm, (w, d, h), loc=(cx, cy, z + h/2), bevel=0.008)
-    if mast:
-        cyl(bm, 0.036, mast, loc=((x0+x1)/2, (y0+y1)/2, z + mast/2), verts=8, r2=0.012)
-    return z
+SK = C["Skyline"]
+NEAR_BASE, MID_BASE, FAR_BASE, HAZE_BASE = -1.60, -2.40, -4.80, -8.20
+GEPS = 0.012              # how far a glazed zone stands proud of its wall
 
-# --- near band: across the street, the only one you read detail on
-NEAR = [
-    # x0     x1     y0     y1    ztop  setback        cap          mast  plant
-    (-7.05, -5.62, -2.70, -0.95, 2.30, None,          (0.05, 0.09), 0.0,
-        ((0.35, 0.30, 0.30, 0.30, 0.34), (0.68, 0.66, 0.22, 0.42, 0.20))),
-    (-6.84, -5.40, -0.72,  0.86, 2.42, (0.22, 0.34),  (0.06, 0.08), 0.0,
-        ((0.50, 0.45, 0.26, 0.26, 0.28),)),
-    (-7.46, -5.92,  1.06,  2.58, 1.95, None,          (0.07, 0.10), 0.0,
-        ((0.30, 0.35, 0.40, 0.34, 0.22), (0.70, 0.70, 0.30, 0.30, 0.30))),
-    (-7.22, -5.52,  2.80,  4.06, 4.10, (0.26, 0.55),  (0.05, 0.07), 0.95, ()),
-    (-7.30, -6.02,  4.28,  5.85, 2.62, None,          (0.06, 0.09), 0.0,
-        ((0.45, 0.50, 0.34, 0.36, 0.26),)),
+# ---- the vocabulary --------------------------------------------------------
+def mass(bm, x0, x1, y0, y1, z0, z1, bev=0.0):
+    box(bm, (x1-x0, y1-y0, z1-z0),
+        loc=((x0+x1)/2, (y0+y1)/2, (z0+z1)/2), bevel=bev)
+
+def glaze(bm, xf, y0, y1, z0, z1, t=0.06):
+    """A glazed zone in the wall plane at x = xf, standing GEPS proud of it."""
+    box(bm, (t, y1-y0, z1-z0),
+        loc=(xf + GEPS - t/2, (y0+y1)/2, (z0+z1)/2))
+
+def ribs(bm, xf, y0, y1, z0, z1, n, w=0.10, d=0.07):
+    """Mullions: wall material standing proud of the glass, so they read light
+    over dark. The only way a vertical rhythm survives a flat shader."""
+    for k in range(n):
+        box(bm, (d, w, z1-z0),
+            loc=(xf + GEPS + d/2, y0 + (y1-y0)*(k+0.5)/n, (z0+z1)/2))
+
+def punched(bm, xf, y0, y1, z0, z1, cols, rows, wf=0.52, hf=0.50):
+    """A punched window rhythm: small dark openings on a light masonry ground."""
+    for i in range(cols):
+        cy = y0 + (y1-y0)*(i+0.5)/cols
+        w  = (y1-y0)/cols*wf
+        for j in range(rows):
+            cz = z0 + (z1-z0)*(j+0.5)/rows
+            h  = (z1-z0)/rows*hf
+            glaze(bm, xf, cy-w/2, cy+w/2, cz-h/2, cz+h/2, t=0.05)
+
+def parapet(bm, x0, x1, y0, y1, z, h=0.12, t=0.075):
+    """Four upstands round a roof. Only worth its triangles where the roofline
+    is actually seen against something — the near heroes and nothing else."""
+    box(bm, (x1-x0, t, h), loc=((x0+x1)/2, y0+t/2, z+h/2))
+    box(bm, (x1-x0, t, h), loc=((x0+x1)/2, y1-t/2, z+h/2))
+    box(bm, (t, y1-y0-t*2, h), loc=(x0+t/2, (y0+y1)/2, z+h/2))
+    box(bm, (t, y1-y0-t*2, h), loc=(x1-t/2, (y0+y1)/2, z+h/2))
+
+def rooftree(bm, x, y, z, h=0.42, r=0.20):
+    """A canopy, not a tree: two squashed prisms on a stub. mat_plant is the one
+    exterior surface that is lit, so these are the only colour out there."""
+    cyl(bm, 0.035, h*0.42, loc=(x, y, z + h*0.21), verts=6)
+    cyl(bm, r,      h*0.34, loc=(x, y, z + h*0.56), verts=7, r2=r*0.76)
+    cyl(bm, r*0.74, h*0.30, loc=(x, y, z + h*0.84), verts=7, r2=r*0.16)
+
+# ============================================================ near band
+bmN = bmesh.new()          # solids        -> mat_city_near
+bmG = bmesh.new()          # glazed zones  -> mat_city_glass
+bmP = bmesh.new()          # roof planting -> mat_plant
+
+# ---- 1. residential tower. Narrow, balcony-rich, slightly asymmetric. The
+# balconies alternate sides floor by floor: a slab that crosses the whole
+# facade every half metre is a horizontal stripe, the same slab stopped short
+# and swapped over on the next floor is a building. What reads from inside is
+# the staggered dark recess behind each one.
+RX0, RX1, RY0, RY1, RZT = -6.34, -5.42, -2.05, -0.34, 3.22
+mass(bmN, RX0, RX1, RY0, RY1, NEAR_BASE, RZT, bev=0.012)
+mass(bmN, RX0, RX1, RY0, -1.52, RZT, RZT+0.34, bev=0.012)            # asymmetry
+for k in range(6):
+    z = 0.46 + k*0.50
+    by0 = -1.42 + (k % 2)*0.54
+    by1 = by0 + 0.72
+    glaze(bmG, RX1, by0, by1, z+0.11, z+0.40, t=0.06)                # the recess
+    box(bmN, (0.06, 0.075, 0.30),                                    # its centre mullion
+        loc=(RX1+GEPS+0.03, (by0+by1)/2, z+0.255))
+    box(bmN, (0.28, by1-by0, 0.08), loc=(RX1+0.14, (by0+by1)/2, z))  # balcony slab
+    box(bmG, (0.04, by1-by0, 0.20), loc=(RX1+0.26, (by0+by1)/2, z+0.14))
+glaze(bmG, RX1, -0.60, -0.40, -0.10, RZT-0.16, t=0.05)               # stair light slot
+glaze(bmG, RX1, -1.98, -1.58, -0.20, 0.16, t=0.05)                   # entrance
+box(bmN, (0.08, 0.10, 4.70), loc=(RX1+0.04, -1.50, 1.20))            # vertical joint
+parapet(bmN, RX0, RX1, RY0, RY1, RZT+0.34)
+for k in range(5):                                                   # roof screen
+    box(bmN, (0.055, 0.07, 0.40), loc=(RX0+0.16+k*0.17, -0.62, RZT+0.54))
+box(bmN, (0.34, 0.30, 0.26), loc=(-5.90, -1.05, RZT+0.47))           # lift overrun
+box(bmN, (0.40, 0.46, 0.14), loc=(-6.05, -1.80, RZT+0.41))           # planter
+rooftree(bmP, -6.05, -1.80, RZT+0.48, h=0.34, r=0.15)
+
+# ---- 2. the office. Curtain wall done the only way it survives a flat shader:
+# one dark glazed field, light ribs standing on it, two opaque bays breaking the
+# run, and a horizontal spandrel every three floors. Setback, then plant room.
+OX0, OX1, OY0, OY1, OZT = -7.36, -6.04, -0.10, 1.78, 2.56
+mass(bmN, OX0, OX1, OY0, OY1, NEAR_BASE, OZT, bev=0.012)
+glaze(bmG, OX1, OY0+0.10, OY1-0.10, -0.34, OZT-0.10, t=0.07)
+ribs(bmN, OX1, OY0+0.10, OY1-0.10, -0.34, OZT-0.10, 9, w=0.085, d=0.055)
+for by in (0.40, 1.28):                                              # opaque bays
+    box(bmN, (0.075, 0.22, 2.94), loc=(OX1+GEPS+0.038, by, 1.10))
+for bz in (0.30, 1.26, 2.22):                                        # spandrels
+    box(bmN, (0.075, OY1-OY0-0.20, 0.115), loc=(OX1+GEPS+0.038, 0.84, bz))
+mass(bmN, OX0+0.24, OX1-0.24, OY0+0.24, OY1-0.24, OZT, OZT+0.46, bev=0.010)
+glaze(bmG, OX1-0.24, OY0+0.34, OY1-0.34, OZT+0.08, OZT+0.38, t=0.05)
+parapet(bmN, OX0+0.24, OX1-0.24, OY0+0.24, OY1-0.24, OZT+0.46)
+box(bmN, (0.62, 0.66, 0.34), loc=(-6.86, 1.16, OZT+0.63))            # penthouse
+box(bmN, (0.70, 0.74, 0.055), loc=(-6.86, 1.16, OZT+0.83))
+box(bmN, (0.28, 0.30, 0.22), loc=(-6.52, 0.40, OZT+0.57))            # riser head
+
+# ---- 3. pane 3 is held open, so the only thing here is roof. Two low blocks at
+# different heights and depths, glazed at street level so they are not blank,
+# and planted: enough occupied ground that the towers stand in a city rather
+# than in front of one.
+mass(bmN, -7.06, -5.50, 1.94, 3.44, NEAR_BASE, 0.56, bev=0.010)
+glaze(bmG, -5.50, 2.06, 3.32, -0.16, 0.34, t=0.05)                   # shopfront
+parapet(bmN, -7.06, -5.50, 1.94, 3.44, 0.56, h=0.10)
+box(bmN, (0.46, 0.52, 0.20), loc=(-6.66, 2.28, 0.66))                # plant deck
+box(bmN, (0.30, 0.34, 0.15), loc=(-6.22, 2.30, 0.64))
+box(bmN, (0.90, 0.11, 0.13), loc=(-6.20, 3.06, 0.63))                # planter run
+for ty in (2.86, 3.16):
+    rooftree(bmP, -6.42, ty, 0.62, h=0.36, r=0.16)
+mass(bmN, -8.62, -7.18, 1.64, 3.92, NEAR_BASE, 0.98, bev=0.010)
+glaze(bmG, -7.18, 1.84, 3.72, 0.28, 0.76, t=0.05)
+parapet(bmN, -8.62, -7.18, 1.64, 3.92, 0.98, h=0.11)
+box(bmN, (0.34, 0.40, 0.30), loc=(-8.20, 2.00, 1.13))                # stair overrun
+box(bmN, (0.56, 0.64, 0.16), loc=(-7.74, 3.28, 1.06))
+rooftree(bmP, -7.98, 3.56, 1.04, h=0.40, r=0.18)
+
+# ---- 4. masonry mid-rise. Broad, horizontal, a punched rhythm of small dark
+# openings rather than a glazed field, a stepped roofline and a planted terrace
+# on the lower step. The typology reads entirely off that opening size.
+MX0, MX1, MY0, MY1, MZT = -7.22, -5.56, 3.62, 5.26, 1.90
+mass(bmN, MX0, MX1, MY0, MY1, NEAR_BASE, MZT, bev=0.012)
+punched(bmG, MX1, 3.72, 5.16, 0.16, 1.74, 5, 3)
+glaze(bmG, MX1, 3.86, 4.44, -0.34, 0.00, t=0.05)                     # ground opening
+mass(bmN, MX0, MX1-0.34, 4.42, MY1, MZT, 2.44, bev=0.012)            # the step up
+punched(bmG, MX1-0.34, 4.54, 5.14, 2.04, 2.32, 2, 1)
+parapet(bmN, MX0, MX1-0.34, 4.42, MY1, 2.44)
+parapet(bmN, MX0, MX1, MY0, 4.42, MZT, h=0.15)                       # terrace edge
+for py in (3.80, 4.06, 4.32):
+    box(bmN, (0.26, 0.20, 0.12), loc=(-5.78, py, MZT+0.07))
+    rooftree(bmP, -5.78, py, MZT+0.13, h=0.26, r=0.11)
+box(bmN, (0.40, 0.44, 0.24), loc=(-6.88, 4.86, 2.56))                # roof plant
+
+# ---- 5. slender mixed-use tower, set back so the masonry block crosses it.
+# Podium, tower, offset upper volume, crown: the silhouette does the work,
+# because only the top third of it clears the roofline in front.
+SX0, SX1, SY0, SY1 = -8.88, -7.92, 4.58, 5.60
+mass(bmN, -9.16, -7.70, 4.32, 5.96, NEAR_BASE, 0.92, bev=0.012)      # podium
+glaze(bmG, -7.70, 4.48, 5.80, 0.10, 0.64, t=0.05)
+parapet(bmN, -9.16, -7.70, 4.32, 5.96, 0.92, h=0.11)
+mass(bmN, SX0, SX1, SY0, SY1, 0.92, 2.74, bev=0.012)
+glaze(bmG, SX1, 5.22, 5.46, 1.04, 2.62, t=0.05)                      # vertical break
+glaze(bmG, SX1, 4.68, 5.10, 1.20, 2.58, t=0.05)
+ribs(bmN, SX1, 4.68, 5.10, 1.20, 2.58, 3, w=0.075, d=0.05)
+mass(bmN, SX0+0.10, SX1-0.10, SY0+0.16, SY1+0.16, 2.74, 3.38, bev=0.012)
+glaze(bmG, SX1-0.10, 4.86, 5.62, 2.90, 3.26, t=0.05)
+parapet(bmN, SX0+0.10, SX1-0.10, SY0+0.16, SY1+0.16, 3.38)
+for k in range(4):                                                   # crown frame
+    box(bmN, (0.06, 0.06, 0.30),
+        loc=(SX0+0.20+(k % 2)*0.56, SY0+0.30+(k//2)*0.54, 3.59))
+box(bmN, (0.78, 0.76, 0.05), loc=(-8.40, 5.02, 3.76))
+cyl(bmN, 0.030, 0.40, loc=(-8.40, 5.02, 3.98), verts=8, r2=0.010)
+
+# ---- 6. the street wall behind the near band. Nothing here is looked at
+# directly; it exists so every gap between the five buildings above lands on
+# roofs and parapets instead of on the mid band's feet. One glazed floor each,
+# so they are masses rather than blanks, and no parapets: at this angle the
+# roofline never breaks a skyline, and the triangles are better spent in front.
+# The first three stand at the near band's own depth, past the left jamb of
+# every website camera. They cost little and they mean a lateral move — cursor
+# parallax, or a future keyframe further along the wall — finds street rather
+# than sky, so they get a facade; the rest are backdrop and get one glazed floor.
+#   face: ("punch", cols, rows) | ("bays", n) | None
+for (x0, x1, y0, y1, zt, ov, face) in (
+        (-7.40, -5.90, -5.55, -3.95, 1.62, (0.34, 0.38, 0.30), ("bays", 3)),
+        (-6.90, -5.60, -3.95, -2.15, 2.35, None,               ("punch", 4, 4)),
+        (-9.70, -8.60, -5.40, -2.70, 1.05, (0.30, 0.32, 0.24), None),
+        (-9.60, -8.72, -2.60, -0.85, 1.12, (0.30, 0.34, 0.26), None),
+        (-9.35, -8.55, -0.95,  0.70, 0.74, None,               None),
+        (-9.80, -8.80,  0.55,  1.80, 1.36, (0.36, 0.30, 0.22), None),
+        (-9.55, -8.66,  3.85,  5.10, 0.88, None,               None),
+        (-9.90, -8.90,  5.85,  7.60, 1.24, (0.32, 0.36, 0.28), None),
+        (-9.40, -8.60,  7.35,  8.90, 0.66, None,               None)):
+    mass(bmN, x0, x1, y0, y1, NEAR_BASE, zt, bev=0.010)
+    if face and face[0] == "punch":
+        punched(bmG, x1, y0+0.14, y1-0.14, -0.30, zt-0.22, face[1], face[2])
+    elif face and face[0] == "bays":
+        n = face[1]
+        for k in range(n):
+            w = (y1-y0-0.28)/(n*2-1)
+            cy = y0 + 0.14 + w/2 + k*w*2
+            glaze(bmG, x1, cy-w/2, cy+w/2, -0.24, zt-0.20, t=0.05)
+    else:
+        glaze(bmG, x1, y0+0.14, y1-0.14, zt-0.52, zt-0.18, t=0.05)
+    if ov:
+        box(bmN, ov, loc=((x0+x1)/2 + 0.12, (y0+y1)/2 - 0.10, zt + ov[2]/2 + 0.04))
+
+mk(bmN, "City_Near", MAT["city_n"], SK, "Skyline")
+mk(bmG, "City_Glazing", MAT["city_g"], SK, "Skyline")
+mk(bmP, "City_Planting", MAT["plant"], SK, "Skyline")
+
+# ============================================================ mid band
+# Curated, not generated. Twelve masses in five typologies, placed so their
+# silhouettes overlap — a skyline is a set of things standing behind each other,
+# and a row of separated rectangles is the one thing that never reads as one.
+# Heights step DOWN from the near band on screen, which is what makes the view
+# recede instead of stacking into a single wall of grey.
+#
+# Facade rhythm here is glazing only: at this distance a rib is two pixels and
+# a dark bay is a shape.
+MID = [
+    #  x0      x1     y0     y1    ztop  kind       bays
+    (-11.40, -10.05, -8.20, -6.10, 2.20, "slab",    0),
+    (-10.70,  -9.35, -6.40, -4.40, 1.75, "broad",   0),
+    (-11.85, -10.60, -4.70, -3.10, 2.95, "narrow",  0),
+    (-11.25,  -9.62, -3.30, -1.02, 2.05, "broad",   3),
+    (-10.65,  -9.42, -1.28, -0.14, 3.55, "narrow",  2),
+    (-11.70, -10.48, -0.36,  1.88, 2.35, "slab",    4),
+    (-10.86,  -9.34,  1.56,  3.34, 2.60, "stepped", 0),
+    (-11.95, -10.92,  3.08,  4.06, 3.05, "crown",   2),
+    (-10.94,  -9.50,  3.88,  6.14, 1.85, "broad",   4),
+    (-11.76, -10.62,  5.78,  7.14, 3.10, "slab",    3),
+    (-10.72,  -9.38,  6.92,  8.84, 2.30, "stepped", 0),
+    (-11.58, -10.30,  8.58, 10.14, 2.75, "crown",   2),
+    (-10.92,  -9.58,  9.80, 11.86, 1.95, "broad",   3),
+    (-11.84, -10.70, 11.40, 12.90, 2.85, "narrow",  0),
+    (-10.80,  -9.55, 12.60, 14.40, 1.70, "slab",    3),
 ]
+bmM = bmesh.new(); bmMG = bmesh.new()
+for (x0, x1, y0, y1, zt, kind, bays) in MID:
+    mass(bmM, x0, x1, y0, y1, MID_BASE, zt, bev=0.018)
+    if kind == "stepped":
+        mass(bmM, x0+0.20, x1-0.20, y0+0.34, y1-0.20, zt, zt+0.52, bev=0.016)
+        mass(bmM, x0+0.42, x1-0.44, y0+0.60, y1-0.46, zt+0.52, zt+0.86, bev=0.014)
+    elif kind == "broad":
+        mass(bmM, x0+0.26, x1-0.16, y0+0.30, y1-0.44, zt, zt+0.40, bev=0.016)
+        box(bmM, (0.42, 0.46, 0.26), loc=((x0+x1)/2, (y0+y1)/2+0.18, zt+0.53))
+    elif kind == "slab":
+        parapet(bmM, x0, x1, y0, y1, zt, h=0.17, t=0.10)
+        box(bmM, (x1-x0-0.5, 0.42, 0.30), loc=((x0+x1)/2, y0+0.55, zt+0.15))
+    elif kind == "crown":
+        mass(bmM, x0+0.14, x1-0.14, y0+0.16, y1-0.16, zt, zt+0.62, bev=0.014)
+        for k in range(4):
+            box(bmM, (0.07, 0.07, 0.40),
+                loc=(x0+0.26+(k % 2)*(x1-x0-0.52),
+                     y0+0.28+(k//2)*(y1-y0-0.56), zt+0.82))
+        cyl(bmM, 0.032, 0.62, loc=((x0+x1)/2, (y0+y1)/2, zt+1.02), verts=8, r2=0.012)
+    else:                                                       # narrow
+        box(bmM, (x1-x0+0.16, y1-y0+0.16, 0.12), loc=((x0+x1)/2, (y0+y1)/2, zt+0.06))
+        box(bmM, (0.34, 0.38, 0.34), loc=((x0+x1)/2, (y0+y1)/2, zt+0.29))
+    for k in range(bays):                                       # glazed bays
+        w = (y1-y0)/(bays*2+1)
+        cy = y0 + w + k*w*2 + w/2
+        box(bmMG, (0.07, w*1.15, (zt-MID_BASE)*0.62),
+            loc=(x1 + GEPS - 0.035, cy, MID_BASE + (zt-MID_BASE)*0.58))
+mk(bmM, "City_Mid", MAT["city_m"], SK, "Skyline")
+mk(bmMG, "City_Mid_Glazing", MAT["city_g"], SK, "Skyline")
+
+# ============================================================ far + haze
+# Silhouette only — no glazing, no relief, nothing that would not survive being
+# three pixels wide. Authored as (y, width, height, roof) rather than generated,
+# because what gives a distant skyline away as procedural is an even rhythm, so
+# the spacing here is uneven on purpose and four of them overlap.
+def profile_band(name, material, rows, xs, zbase, depth):
+    bm = bmesh.new()
+    for i, (y, w, h, roof) in enumerate(rows):
+        x0 = xs[0] + (xs[1]-xs[0]) * ((i * 0.37) % 1.0)
+        x1 = x0 + depth[0] + (depth[1]-depth[0]) * ((i * 0.61) % 1.0)
+        mass(bm, x0, x1, y, y+w, zbase, h, bev=0.024)
+        if roof == "set":
+            mass(bm, x0+0.22, x1-0.22, y+0.26, y+w-0.26, h, h+0.72, bev=0.02)
+        elif roof == "step":
+            mass(bm, x0+0.18, x1-0.18, y+0.20, y+w-0.20, h, h+0.55, bev=0.02)
+            mass(bm, x0+0.40, x1-0.40, y+0.46, y+w-0.46, h+0.55, h+0.95, bev=0.02)
+        elif roof == "crown":
+            mass(bm, x0+0.26, x1-0.26, y+0.30, y+w-0.30, h, h+0.50, bev=0.02)
+            cyl(bm, 0.05, 0.72, loc=((x0+x1)/2, y+w/2, h+0.86), verts=8, r2=0.016)
+        elif roof == "cap":
+            box(bm, (x1-x0+0.14, w+0.14, 0.13), loc=((x0+x1)/2, y+w/2, h+0.065))
+    return mk(bm, name, material, SK, "Skyline")
+
+profile_band("City_Far", MAT["city_f"], [
+    (-5.20, 2.05, 1.35, "set"),   (-3.55, 1.40, 2.55, "crown"),
+    (-2.40, 2.60, 1.75, "cap"),   ( 0.10, 1.65, 2.95, "step"),
+    ( 1.45, 3.10, 1.15, "set"),   ( 4.30, 1.85, 2.25, "cap"),
+    ( 5.70, 2.35, 1.60, "step"),  ( 8.05, 1.50, 3.10, "crown"),
+    ( 9.20, 2.80, 1.30, "set"),   (11.70, 2.10, 2.05, "cap"),
+    (13.40, 3.20, 1.70, "step"),  (16.30, 1.70, 2.60, "set"),
+    (18.10, 2.60, 1.45, "cap"),  (-7.90, 2.35, 1.90, "step"),
+    (20.30, 3.00, 2.15, "set"),  (-10.10, 2.05, 1.20, "cap"),
+], (-17.9, -15.3), FAR_BASE, (1.9, 3.4))
+
+profile_band("City_Haze", MAT["city_h"], [
+    (-6.60, 2.60, 0.20, "set"),   (-4.40, 1.80, 1.45, "cap"),
+    (-2.90, 3.30, 0.60, "step"),  ( 0.05, 2.20, 2.10, "crown"),
+    ( 1.90, 3.60, 0.05, "set"),   ( 5.10, 2.45, 1.60, "cap"),
+    ( 7.20, 3.05, 0.85, "step"),  ( 9.85, 1.95, 2.35, "crown"),
+    (11.40, 3.40, 0.30, "set"),   (14.45, 2.70, 1.25, "cap"),
+    (16.80, 3.90, 0.70, "step"),  (20.30, 2.30, 1.90, "set"),
+    (22.20, 3.50, 0.15, "cap"),   (25.40, 2.90, 1.10, "step"),
+    (28.60, 3.20, 1.75, "set"),   (-9.80, 2.80, 0.95, "cap"),
+    (-13.0, 3.40, 0.40, "step"),  (31.50, 2.60, 0.65, "cap"),
+], (-24.8, -21.4), HAZE_BASE, (2.4, 4.2))
+
+# The sky. Sized off the sight cone rather than by eye: at x = -30 the widest
+# ray from the window reaches y = 31 and z = 13, and a lateral camera move adds
+# to both. The old card stopped at y = 30, which left the top corner of the
+# frame open to the clear colour on an oblique — a hole rather than a sky. Two
+# cards now: the backdrop, and a lid, because looking up through the head of
+# the opening from close to the glass clears the backdrop's top edge.
 bm = bmesh.new()
-for (x0, x1, y0, y1, zt, sb, cp, ms, pl) in NEAR:
-    tower(bm, x0, x1, y0, y1, zt, -1.40, setback=sb, cap=cp, mast=ms, plant=pl)
-mk(bm, "City_Near", MAT["city_n"], C["Skyline"], "Skyline")
-
-bm = bmesh.new()                                 # glazing bands on the near band only
-for (x0, x1, y0, y1, zt, sb, cp, ms, pl) in NEAR:
-    z = zt - 0.42
-    while z > -0.30:
-        box(bm, (x1-x0+0.016, y1-y0-0.30, 0.16), loc=((x0+x1)/2, (y0+y1)/2, z))
-        z -= 0.46
-mk(bm, "City_Glazing", MAT["city_g"], C["Skyline"], "Skyline")
-
-def band(name, material, seed, xs, ys, depth, hmin, hmax, wmin, wmax, zbase, plant_odds=0.0):
-    random.seed(seed)
-    bm = bmesh.new(); y = ys[0]
-    while y < ys[1]:
-        w = random.uniform(wmin, wmax)
-        d = random.uniform(*depth)
-        x0 = random.uniform(*xs)
-        zt = random.uniform(hmin, hmax)
-        sb = (random.uniform(0.10, 0.30), random.uniform(0.25, 0.70)) if random.random() < 0.45 else None
-        pl = ()
-        if random.random() < plant_odds:
-            pl = ((0.4, 0.45, 0.26, 0.26, 0.24),)
-        tower(bm, x0, x0 + d, y, y + w, zt, zbase, bev=0.02,
-              setback=sb, cap=(0.05, 0.08), plant=pl,
-              mast=random.uniform(0.5, 1.1) if random.random() < 0.18 else 0.0)
-        y += w + random.uniform(0.22, 0.95)
-    return mk(bm, name, material, C["Skyline"], "Skyline")
-
-band("City_Mid",  MAT["city_m"], 21, (-11.2, -9.0), (-4.8, 10.0), (1.5, 2.6),
-     2.7, 5.0, 0.9, 2.2, -2.10, plant_odds=0.35)
-band("City_Far",  MAT["city_f"], 37, (-17.0, -13.4), (-7.4, 16.2), (2.0, 3.4),
-     3.6, 6.9, 1.3, 3.1, -4.40)
-band("City_Haze", MAT["city_h"], 53, (-23.4, -19.8), (-11.5, 24.5), (2.6, 4.2),
-     4.4, 8.2, 1.8, 4.4, -7.60)
-
-bm = bmesh.new()
-box(bm, (0.10, 50.0, 28.0), loc=(-30.0, 5.0, 2.0))
-mk(bm, "Sky_Card", MAT["sky"], C["Skyline"], "Skyline")
+box(bm, (0.10, 132.0, 68.0), loc=(-31.0, 16.0, 8.0))
+box(bm, (62.0, 132.0, 0.10), loc=(-31.0, 16.0, 41.0))
+mk(bm, "Sky_Card", MAT["sky"], SK, "Skyline")
 
 # ---------------------------------------------------------------- desk
 DX0, DX1 = -1.42, 1.62                 # 3.04 m wide

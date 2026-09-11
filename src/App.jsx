@@ -9,7 +9,7 @@ const Construction = lazy(() =>
   import('./examples/construction/ConstructionExperience.jsx'),
 )
 const ConstructionTwo = lazy(() =>
-  import('./examples/construction-two/RoomViewer.jsx'),
+  import('./examples/construction-two/ConstructionTwoPage.jsx'),
 )
 const Crypto = lazy(() => import('./examples/crypto/CryptoExperience.jsx'))
 const Education = lazy(() =>

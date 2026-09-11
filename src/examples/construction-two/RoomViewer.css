@@ -4,6 +4,12 @@
    except where a single line is allowed to be large; the surfaces are
    tracing paper and hairline rules rather than cards and glass. */
 
+/* Fixed, and deliberately still fixed now that there is a page under it.
+   Sticking a WebGL canvas inside a 1680vh box was the obvious way to make the
+   hero release, and it hangs the renderer: a composited canvas re-promoted on
+   every sticky recalculation across a document that tall is more than the
+   compositor will take. So the stage stays where it always was and the page
+   is layered over it instead — see .c2hero in page.css. */
 .stage {
   position: fixed;
   inset: 0;
@@ -580,12 +586,6 @@
   50%  { transform: scaleY(1); transform-origin: top; }
   51%  { transform: scaleY(1); transform-origin: bottom; }
   100% { transform: scaleY(0); transform-origin: bottom; }
-}
-
-.track {
-  position: relative;
-  z-index: 1;
-  pointer-events: none;
 }
 
 .viewer-overlay {

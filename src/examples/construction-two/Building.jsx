@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useRoomModel } from './useRoomModel.js'
-import { BUILD_RANGE } from './shots.js'
+import { BUILD_RANGE, phaseFromPiece } from './story.js'
 import { WIREFRAME_COLOUR } from './palette.js'
 
 // How much of each piece's own window is spent drawing its wireframe before
@@ -199,6 +199,10 @@ function Building({ input, reducedMotion }) {
         wireframe,
         segmentCount,
         localMinY: rest.localMinY,
+        // Read off the model's own extras. The Blender pass writes `phase` and
+        // `phase_index` per piece; phaseFromPiece only falls back to an order
+        // table if a GLB ever turns up without them.
+        phase: phaseFromPiece(mesh.userData),
         start: BUILD_RANGE.start + index * stagger,
         duration,
       }
@@ -260,14 +264,18 @@ function Building({ input, reducedMotion }) {
 
   useFrame(() => {
     const progress = input.current.progress
+    let active = -1
 
     for (const piece of pieces) {
-      stepPiece(
-        piece,
-        clamp01((progress - piece.start) / piece.duration),
-        reducedMotion,
-      )
+      const local = clamp01((progress - piece.start) / piece.duration)
+      stepPiece(piece, local, reducedMotion)
+      // The furthest phase any piece has actually started. Written to the same
+      // ref the scroll uses rather than to React state — the phase rail reads it
+      // on its own rAF and only re-renders when the number changes.
+      if (local > 0.04 && piece.phase > active) active = piece.phase
     }
+
+    input.current.buildPhase = active
   })
 
   return null

@@ -150,6 +150,17 @@ export const OUTLINE_GROUP = 'Outline'
 /** The study model on the desk, assembled piece by piece as you scroll. */
 export const BUILDING_GROUP = 'Building'
 
+/** The hero plot and everything plotted on it. */
+export const DRAWING_GROUP = 'Drawing'
+
+/**
+ * Transform-only nodes the model exports for the web build to hang things off:
+ * the building's spawn point, the sheet origin, the pinboard label points. They
+ * carry no geometry, so they never reach the material or shadow passes — they
+ * exist purely so positions come from the model rather than from guesswork.
+ */
+export const ANCHOR_GROUP = 'Anchors'
+
 /** Outside the glass, and any outline shell, take no part in shadowing. */
 export const UNSHADOWED_GROUPS = new Set(['Skyline', 'Outline'])
 

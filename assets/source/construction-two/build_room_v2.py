@@ -56,7 +56,8 @@ MAT = {
 }
 
 GROUPS = ["Floor","Ceiling","Walls","Window","Skyline","Pinboard","Desk","Chair",
-          "Desktop","Bin","Credenza","Plant","Figure","Building","LightingElements"]
+          "Desktop","Bin","Credenza","Plant","Figure","Building","LightingElements",
+          "Drawing","Anchors"]
 C = {g: coll(g) for g in GROUPS}
 
 # ============================================================ room dimensions
@@ -264,6 +265,17 @@ mk(bm, "Sky_Card", MAT["sky"], C["Skyline"], "Skyline")
 DX0, DX1 = -1.42, 1.62                 # 3.04 m wide
 DY0, DY1 = 0.78, 1.80                  # 1.02 m deep
 DTOP = 0.742
+
+# ---- the hero plot, declared here because the study model now stands on it
+# The sheet is the origin of the whole drawing-to-building sequence, so its
+# frame is defined before anything that has to sit on it. See the "hero
+# drawing" section below for how the plan itself is laid out.
+DS_X, DS_Y = 0.50, 1.295               # sheet centre on the desk
+DS_ROT     = math.radians(-6)          # the casual angle it was laid down at
+SHEET_W, SHEET_D = 1.00, 0.82          # large-format plot, 1.00 x 0.82 m
+PAPER_T    = 0.0018                    # sheet thickness
+PAPER_TOP  = DTOP + PAPER_T
+BLD_Z      = PAPER_TOP + 0.0003        # the model stands ON the plot, not in it
 bm = bmesh.new()
 box(bm, (DX1-DX0, DY1-DY0, 0.032), loc=((DX0+DX1)/2, (DY0+DY1)/2, DTOP-0.016), bevel=0.005)
 mk(bm, "Desk_Top", MAT["walnut"], C["Desk"], "Desk")
@@ -472,11 +484,24 @@ mk(bm, "Lamp_Emitter", MAT["warm"], C["LightingElements"], "LightingElements")
 # Anything growing these pieces upward has to read each mesh's own local bounds
 # rather than assume a centred or base-seated origin.
 MX, MY = 0.56, 1.30
+MROT   = math.radians(-62)
+
+# Delivery phase per piece, read off the geometry rather than assigned by
+# convenience: slabs and the core are frame, the enclosed masses are envelope.
+# Note these INTERLEAVE in assembly order (3 plate, 4 volume, 5 plate...), which
+# is how a floor actually goes up — frame a level, enclose it, frame the next.
+PHASE = {1: "foundation", 2: "foundation", 3: "structure", 4: "envelope",
+         5: "structure", 6: "envelope", 7: "structure", 8: "envelope",
+         9: "structure", 10: "envelope", 11: "structure", 12: "completion",
+         13: "completion"}
+PHASE_INDEX = {"foundation": 0, "structure": 1, "envelope": 2, "completion": 3}
+
 BLD = []
 def bld(idx, name, material, build):
     bm = bmesh.new(); build(bm)
-    ob = mk(bm, name, material, C["Building"], "Building", loc=(MX, MY, DTOP),
-            rot=(0, 0, math.radians(-62)), order=idx)
+    ob = mk(bm, name, material, C["Building"], "Building", loc=(MX, MY, BLD_Z),
+            rot=(0, 0, MROT), order=idx,
+            extra={"phase": PHASE[idx], "phase_index": PHASE_INDEX[PHASE[idx]]})
     BLD.append(ob); return ob
 
 def slab(bm, w, d, t, dx=0.0, dy=0.0, z=0.0, rz=0.0, bev=0.0035):
@@ -537,22 +562,25 @@ bld(13, "Bld_13_mast",   MAT["model"], mast)
 
 bm = bmesh.new()                                             # blue reveal, the one accent
 box(bm, (0.452, 0.332, 0.004), loc=(-0.020, -0.020, 0.087), rot=(0, 0, RZ))
-mk(bm, "Bld_Accent", MAT["blue"], C["Building"], "Building", loc=(MX, MY, DTOP),
-   rot=(0, 0, math.radians(-62)), order=2)
+mk(bm, "Bld_Accent", MAT["blue"], C["Building"], "Building", loc=(MX, MY, BLD_Z),
+   rot=(0, 0, MROT), order=2,
+   extra={"phase": PHASE[2], "phase_index": PHASE_INDEX[PHASE[2]]})
 
 # ================================================================ desktop
 def sheet(bm, w, d, x, y, rz, t=0.0016, z=DTOP):
     box(bm, (w, d, t), loc=(x, y, z + t/2), rot=(0, 0, rz))
 
-bm = bmesh.new()                                           # the main drawing + trace layers
-sheet(bm, 0.62, 0.44, -0.44, 1.16, math.radians(-6))
-sheet(bm, 0.58, 0.41, -0.40, 1.22, math.radians(3), z=DTOP+0.0016)
-sheet(bm, 0.30, 0.22, -0.72, 1.02, math.radians(11), z=DTOP+0.0032)
+# The reference set, moved left off the hero plot. It used to be the main event
+# on this desk; now it is the sheet she is working FROM, and the big plot to her
+# right is the one the building comes out of.
+bm = bmesh.new()
+sheet(bm, 0.58, 0.42, -0.68, 1.14, math.radians(-7))
+sheet(bm, 0.52, 0.37, -0.66, 1.16, math.radians(2), z=DTOP+0.0016)
 mk(bm, "Desktop_Drawings", MAT["paper"], C["Desktop"], "Desktop")
 
 bm = bmesh.new()                                           # plan linework on the top sheet
 bmA = bmesh.new()
-SR = math.radians(3); SCX, SCY = -0.40, 1.22
+SR = math.radians(2); SCX, SCY = -0.66, 1.16
 def DL(bmx, dx, dy, w, d, z=DTOP+0.0046):
     ca, sa = math.cos(SR), math.sin(SR)
     box(bmx, (w, d, 0.0008), loc=(SCX + dx*ca - dy*sa, SCY + dx*sa + dy*ca, z), rot=(0, 0, SR))
@@ -579,12 +607,14 @@ bm = bmesh.new()
 box(bm, (0.226, 0.158, 0.013), loc=(-1.02, 1.44, DTOP+0.0105), rot=(0, 0, math.radians(-14)))
 mk(bm, "Desktop_Sketchbook_Pages", MAT["paper"], C["Desktop"], "Desktop")
 
-bm = bmesh.new()                                           # pencil + scale rule
-cyl(bm, 0.0045, 0.145, loc=(-0.10, 0.96, DTOP+0.005), rot=(0, math.pi/2, math.radians(24)), verts=6)
-cyl(bm, 0.0048, 0.020, loc=(-0.172, 0.964, DTOP+0.005), rot=(0, math.pi/2, math.radians(24)), verts=6, r2=0.0016)
-mk(bm, "Desktop_Pencil", MAT["dark_m"], C["Desktop"], "Desktop", smooth=True)
+# Pencil set down on the plot with its tip at the edge of the drawn area, so a
+# line animating outward from Pencil_Tip_Anchor reads as coming off this point.
 bm = bmesh.new()
-box(bm, (0.30, 0.026, 0.006), loc=(0.02, 0.90, DTOP+0.003), rot=(0, 0, math.radians(6)), bevel=0.001)
+cyl(bm, 0.0045, 0.145, loc=(0.020, 0.975, DTOP+0.005), rot=(0, math.pi/2, math.radians(6)), verts=6)
+cyl(bm, 0.0048, 0.020, loc=(-0.053, 0.9815, DTOP+0.005), rot=(0, math.pi/2, math.radians(6)), verts=6, r2=0.0016)
+mk(bm, "Desktop_Pencil", MAT["dark_m"], C["Desktop"], "Desktop", smooth=True)
+bm = bmesh.new()                                           # scale rule, along the near edge
+box(bm, (0.32, 0.026, 0.006), loc=(0.30, 0.915, DTOP+0.0042), rot=(0, 0, math.radians(-5)), bevel=0.001)
 mk(bm, "Desktop_Scale", MAT["brushed"], C["Desktop"], "Desktop")
 
 bm = bmesh.new()                                           # books, two flat one leaning
@@ -604,13 +634,273 @@ bm = bmesh.new()
 box(bm, (0.058, 0.058, 0.005), loc=(1.132, 1.028, DTOP+0.0095), rot=(0, 0, math.radians(4)))
 mk(bm, "Desktop_Sample_Walnut", MAT["walnut"], C["Desktop"], "Desktop")
 
-bm = bmesh.new()                                           # tablet, laid flat, dark
-box(bm, (0.19, 0.26, 0.007), loc=(0.02, 1.62, DTOP+0.004), rot=(0, 0, math.radians(-9)), bevel=0.002)
+bm = bmesh.new()                                           # tablet, moved clear of the plot
+box(bm, (0.19, 0.26, 0.007), loc=(1.06, 1.60, DTOP+0.004), rot=(0, 0, math.radians(-9)), bevel=0.002)
 mk(bm, "Desktop_Tablet", MAT["black"], C["Desktop"], "Desktop")
 
 bm = bmesh.new()                                           # bin, under the desk edge
 cyl(bm, 0.115, 0.30, loc=(1.86, 0.72, 0.15), verts=18, r2=0.095)
 mk(bm, "Bin", MAT["dark_m"], C["Bin"], "Bin", smooth=True)
+
+# ================================================================ hero drawing
+# The signature moment: the plan resolves on this sheet and the study model
+# rises straight out of it.
+#
+# Everything hangs off the Drawing_System empty, and its local space IS the
+# sheet — +X across the plot, +Y up it, Z off the paper, origin at the sheet
+# centre on the desk top. Children are authored directly in that space and keep
+# an identity transform (matrix_parent_inverse is cleared), so the glTF hands
+# the developer clean local coordinates instead of offsets to reverse-engineer.
+#
+# The sheet has to be this big. The approved building's base plate is
+# 520 x 400 mm sitting at -62 degrees, so its footprint covers a 623 x 654 mm
+# patch of desk; on anything A2-sized the tower would overhang its own drawing.
+# 1.00 x 0.82 m is a large-format plot — what you would actually roll out for a
+# site plan, and the reason the sheet sits to her drawing-hand side rather than
+# dead centre in front of her.
+
+DRAW = bpy.data.objects.new("Drawing_System", None)
+C["Drawing"].objects.link(DRAW)
+DRAW.location = (DS_X, DS_Y, DTOP)
+DRAW.rotation_euler = (0, 0, DS_ROT)
+DRAW.empty_display_size = 0.22
+DRAW["group"] = "Drawing"
+DRAW["system"] = "Drawing"
+bpy.context.view_layer.update()
+
+def DMK(bm, name, material, stage=None, extra=None):
+    """Finalise a drawing mesh authored in SHEET-LOCAL coordinates.
+
+    mk() normally cancels the parent transform so world-authored geometry stays
+    put — that is what the chair needs. Here the opposite is wanted: clearing
+    the parent inverse lets the sheet's own transform carry the geometry, so the
+    exported node is an identity child of Drawing_System."""
+    ob = mk(bm, name, material, C["Drawing"], "Drawing")
+    ob.parent = DRAW
+    ob.matrix_parent_inverse = Matrix.Identity(4)
+    ob.location = (0, 0, 0); ob.rotation_euler = (0, 0, 0)
+    ob["system"] = "Drawing"
+    if stage is not None: ob["stage"] = int(stage)
+    if extra:
+        for k, v in extra.items(): ob[k] = v
+    return ob
+
+# Where the approved building lands, expressed in sheet space. Derived from the
+# building's own constants, so the plan cannot drift away from the model.
+_ddx, _ddy = MX - DS_X, MY - DS_Y
+_dc, _dsn  = math.cos(-DS_ROT), math.sin(-DS_ROT)
+FP_X   = _ddx*_dc - _ddy*_dsn
+FP_Y   = _ddx*_dsn + _ddy*_dc
+FP_ROT = MROT - DS_ROT                 # the building's angle, seen on the sheet
+BRZ    = math.radians(-6.0)            # the massing's own internal rotation
+LT     = 0.00020                       # line thickness off the paper
+
+# Nine layers stacked in 2 mm. Each is 0.25 mm clear of the last, which is
+# hundreds of times the depth buffer's precision at this range, and the whole
+# stack stays thin enough that a grazing camera never catches linework floating
+# off its own sheet.
+Z_SURF = PAPER_T + 0.00020             # animation surface
+Z_FILL = PAPER_T + 0.00045             # footprint wash
+Z_GRID = PAPER_T + 0.00070
+Z_PERI = PAPER_T + 0.00095
+Z_STRU = PAPER_T + 0.00120
+Z_CORE = PAPER_T + 0.00145
+Z_DIMS = PAPER_T + 0.00170
+Z_ANNO = PAPER_T + 0.00195
+
+def BP(bx, by):
+    """building-plan coordinates -> sheet coordinates"""
+    ca, sa = math.cos(FP_ROT), math.sin(FP_ROT)
+    return (FP_X + bx*ca - by*sa, FP_Y + bx*sa + by*ca)
+
+def PL(bmx, bx, by, w, d, z, rot=0.0):
+    """a line placed on the building's plan grid"""
+    x, y = BP(bx, by)
+    box(bmx, (w, d, LT), loc=(x, y, z), rot=(0, 0, FP_ROT + rot))
+
+def SL(bmx, x, y, w, d, z, rz=0.0):
+    """a line placed square to the sheet"""
+    box(bmx, (w, d, LT), loc=(x, y, z), rot=(0, 0, rz))
+
+def RECT(bmx, bx, by, w, d, t, z, rot=0.0):
+    """outline of a rectangle in the building's plan grid"""
+    cx, cy = BP(bx, by)
+    ca, sa = math.cos(FP_ROT + rot), math.sin(FP_ROT + rot)
+    for (ox, oy, ww, dd) in ((0, d/2, w + t, t), (0, -d/2, w + t, t),
+                             (-w/2, 0, t, d - t), (w/2, 0, t, d - t)):
+        box(bmx, (ww, dd, LT), loc=(cx + ox*ca - oy*sa, cy + ox*sa + oy*ca, z),
+            rot=(0, 0, FP_ROT + rot))
+
+# ---- the physical sheet
+bm = bmesh.new()
+box(bm, (SHEET_W, SHEET_D, PAPER_T), loc=(0, 0, PAPER_T/2), bevel=0.0006)
+DMK(bm, "Drawing_Paper_Main", MAT["paper"], extra={"role": "paper"})
+
+bm = bmesh.new()                       # a tracing sheet laid over a clear corner
+box(bm, (0.24, 0.18, 0.0008), loc=(-0.33, -0.185, PAPER_T + 0.0024),
+    rot=(0, 0, math.radians(3)))
+DMK(bm, "Drawing_Trace_Sheet", MAT["model"], extra={"role": "trace"})
+
+# ---- the surface the web build will animate lines across. Same plane, same
+# orientation, inset to the usable area, carrying a clean 0..1 UV so a shader
+# or a texture can be driven across it without deriving one at runtime.
+UW, UD = SHEET_W - 0.06, SHEET_D - 0.06
+bm = bmesh.new()
+box(bm, (UW, UD, 0.0002), loc=(0, 0, Z_SURF))
+_surf = DMK(bm, "Drawing_Surface", MAT["paper"],
+            extra={"role": "animation_surface", "usable_w": UW, "usable_d": UD})
+_uv = _surf.data.uv_layers.new(name="UVMap")
+for _poly in _surf.data.polygons:
+    for _li in _poly.loop_indices:
+        _co = _surf.data.vertices[_surf.data.loops[_li].vertex_index].co
+        _uv.data[_li].uv = (_co.x/UW + 0.5, _co.y/UD + 0.5)
+
+# ---- stage 1: registration and the structural grid
+bm = bmesh.new()
+for (x, y, w, d) in ((0, SHEET_D/2 - 0.028, SHEET_W - 0.056, 0.0010),
+                     (0, -SHEET_D/2 + 0.028, SHEET_W - 0.056, 0.0010),
+                     (-SHEET_W/2 + 0.028, 0, 0.0010, SHEET_D - 0.056),
+                     (SHEET_W/2 - 0.028, 0, 0.0010, SHEET_D - 0.056)):
+    SL(bm, x, y, w, d, Z_GRID)
+GX = (-0.260, -0.156, -0.052, 0.052, 0.156, 0.260)
+GY = (-0.200, -0.100, 0.000, 0.100, 0.200)
+for bx in GX:
+    PL(bm, bx, 0.0, 0.0010, 0.470, Z_GRID)
+    for by in (-0.235, 0.235):
+        PL(bm, bx, by, 0.0070, 0.0070, Z_GRID)
+for by in GY:
+    PL(bm, 0.0, by, 0.600, 0.0010, Z_GRID)
+    for bx in (-0.300, 0.300):
+        PL(bm, bx, by, 0.0070, 0.0070, Z_GRID)
+DMK(bm, "Drawing_Grid", MAT["brushed"], stage=1)
+
+# ---- stage 2: site boundary and the building perimeter
+bm = bmesh.new()
+for (x, y, w, d, r) in ((0.055, 0.330, 0.760, 0.0022, 0.0),
+                        (0.055, -0.346, 0.760, 0.0022, 0.0),
+                        (-0.322, -0.008, 0.0022, 0.678, 0.0),
+                        (0.434, -0.008, 0.0022, 0.678, 0.0)):
+    SL(bm, x, y, w, d, Z_PERI, r)
+RECT(bm, 0.0, 0.0, 0.520, 0.400, 0.0020, Z_PERI)            # base plate edge
+RECT(bm, -0.020, -0.020, 0.450, 0.330, 0.0034, Z_PERI, BRZ)  # podium perimeter
+RECT(bm, 0.030, 0.014, 0.210, 0.196, 0.0030, Z_PERI, BRZ)    # tower footprint
+DMK(bm, "Drawing_Perimeter", MAT["dark_m"], stage=2)
+
+# ---- stage 3: structural layout and the major internal divisions
+bm = bmesh.new()
+for bx in (-0.156, -0.052, 0.052, 0.156):                    # primary beams
+    PL(bm, bx, -0.020, 0.0016, 0.320, Z_STRU, BRZ)
+for by in (-0.100, 0.100):
+    PL(bm, -0.020, by, 0.430, 0.0016, Z_STRU, BRZ)
+for bx in GX:                                                # columns
+    for by in GY:
+        if abs(bx) <= 0.22 and abs(by) <= 0.17:
+            PL(bm, bx, by, 0.0085, 0.0085, Z_STRU, BRZ)
+PL(bm, 0.086, 0.014, 0.0024, 0.190, Z_STRU, BRZ)             # internal divisions
+PL(bm, -0.070, 0.062, 0.170, 0.0024, Z_STRU, BRZ)
+PL(bm, -0.070, -0.066, 0.170, 0.0024, Z_STRU, BRZ)
+DMK(bm, "Drawing_Structure", MAT["dark_m"], stage=3)
+
+# ---- stage 4: the circulation core, in architectural blue
+bm = bmesh.new()
+RECT(bm, -0.176, -0.042, 0.070, 0.104, 0.0030, Z_CORE, BRZ)
+for k in range(6):                                           # stair run
+    PL(bm, -0.176, -0.082 + k*0.0155, 0.058, 0.0022, Z_CORE, BRZ)
+for (_ox, _oy, _w, _d) in ((0, 0.020, 0.048, 0.0022), (0, -0.020, 0.048, 0.0022),
+                           (-0.024, 0, 0.0022, 0.040), (0.024, 0, 0.0022, 0.040)):
+    PL(bm, -0.176 + _ox, 0.020 + _oy, _w, _d, Z_CORE, BRZ)   # lift car, outlined
+PL(bm, -0.176, -0.042, 0.070, 0.0022, Z_CORE, BRZ)           # landing line
+DMK(bm, "Drawing_Core", MAT["blue"], stage=4)
+
+# ---- stage 5: dimension strings on the two principal faces
+bm = bmesh.new()
+for (bx, by, w, d, rot, ticks, along) in (
+        (0.0, -0.246, 0.520, 0.0012, 0.0, GX, "x"),
+        (0.316, 0.0, 0.0012, 0.400, 0.0, GY, "y")):
+    PL(bm, bx, by, w, d, Z_DIMS, rot)
+    for t in ticks:
+        if along == "x":
+            PL(bm, t, -0.246, 0.0016, 0.016, Z_DIMS)
+        else:
+            PL(bm, 0.316, t, 0.016, 0.0016, Z_DIMS)
+for (bx, by) in ((-0.260, -0.246), (0.260, -0.246)):         # witness lines
+    PL(bm, bx, by + 0.023, 0.0012, 0.046, Z_DIMS)
+for by in (-0.200, 0.200):
+    PL(bm, 0.293, by, 0.046, 0.0012, Z_DIMS)
+DMK(bm, "Drawing_Dimensions", MAT["brushed"], stage=5)
+
+# ---- stage 6: annotation. Marks and rules only — no glyphs anywhere.
+bm = bmesh.new()
+TB_X, TB_Y, TB_W, TB_H = -0.335, -0.350, 0.270, 0.080        # title block
+for (ox, oy, w, d) in ((0, TB_H/2, TB_W, 0.0018), (0, -TB_H/2, TB_W, 0.0018),
+                       (-TB_W/2, 0, 0.0018, TB_H), (TB_W/2, 0, 0.0018, TB_H)):
+    SL(bm, TB_X + ox, TB_Y + oy, w, d, Z_ANNO)
+for k in range(3):
+    SL(bm, TB_X, TB_Y + TB_H/2 - 0.020 - k*0.020, TB_W, 0.0010, Z_ANNO)
+SL(bm, TB_X - TB_W/2 + 0.040, TB_Y + TB_H/2 - 0.010, 0.060, 0.0060, Z_ANNO)
+SL(bm, TB_X + TB_W/2 - 0.036, TB_Y - TB_H/2 + 0.012, 0.048, 0.0045, Z_ANNO)
+NX, NY = -0.398, 0.300                                       # north point
+for k in range(10):
+    a = math.tau*k/10
+    SL(bm, NX + math.cos(a)*0.026, NY + math.sin(a)*0.026, 0.0130, 0.0016, Z_ANNO,
+       a + math.pi/2)
+SL(bm, NX, NY + 0.008, 0.0090, 0.030, Z_ANNO)
+SL(bm, NX, NY - 0.016, 0.0180, 0.0016, Z_ANNO)
+SBX, SBY = -0.398, 0.196                                     # scale bar
+SL(bm, SBX, SBY, 0.160, 0.0014, Z_ANNO)
+for k in range(5):
+    SL(bm, SBX - 0.080 + k*0.040, SBY, 0.0014, 0.011, Z_ANNO)
+for k in (0, 2):
+    SL(bm, SBX - 0.060 + k*0.040, SBY - 0.004, 0.040, 0.0055, Z_ANNO)
+for (x0, y0, x1, y1) in ((-0.150, 0.352, -0.060, 0.286),     # two leaders
+                         (0.440, -0.190, 0.330, -0.128)):
+    mx_, my_ = (x0+x1)/2, (y0+y1)/2
+    SL(bm, mx_, my_, math.hypot(x1-x0, y1-y0), 0.0012, Z_ANNO,
+       math.atan2(y1-y0, x1-x0))
+    SL(bm, x1, y1, 0.0070, 0.0070, Z_ANNO)
+DMK(bm, "Drawing_Annotations", MAT["dark_m"], stage=6)
+
+# ---- stage 7: the footprint resolves. This wash is exactly the base plate, so
+# the moment it lands the building has somewhere to stand.
+# A solid wash here reads as a hologram, not a drawing, and buries the plan it
+# is supposed to resolve. This is what a drawing actually does to mark an area
+# of works: a light hatch inside a heavy boundary.
+bm = bmesh.new()
+for k in range(11):
+    PL(bm, 0.0, -0.180 + k*0.036, 0.508, 0.0017, Z_FILL)
+RECT(bm, 0.0, 0.0, 0.520, 0.400, 0.0044, Z_ANNO + 0.00025)
+for (sx, sy) in ((-1, -1), (-1, 1), (1, -1), (1, 1)):        # corner registration
+    PL(bm, sx*0.260, sy*0.200, 0.052, 0.0028, Z_ANNO + 0.00025)
+    PL(bm, sx*0.260, sy*0.200, 0.0028, 0.052, Z_ANNO + 0.00025)
+DMK(bm, "Drawing_Building_Footprint", MAT["blue"], stage=7,
+    extra={"role": "spawn_footprint"})
+
+# ---- anchors. No geometry; predictable transforms for the web build to hang
+# annotations and the emerging model off.
+def anchor(name, loc, rot=(0, 0, 0), parent=None, extra=None):
+    ob = bpy.data.objects.new(name, None)
+    C["Anchors"].objects.link(ob)
+    ob.location = loc; ob.rotation_euler = rot
+    ob.empty_display_type = 'PLAIN_AXES'; ob.empty_display_size = 0.10
+    ob["group"] = "Anchors"; ob["anchor"] = name
+    if extra:
+        for k, v in extra.items(): ob[k] = v
+    if parent is not None:
+        ob.parent = parent
+        ob.matrix_parent_inverse = Matrix.Identity(4)
+    return ob
+
+# The spawn anchor is not a guess at where the model goes — it carries exactly
+# the rest transform every Bld_* piece is exported with, expressed in the
+# sheet's own space. Read it, and you know where the building begins.
+anchor("Building_Spawn_Anchor", (FP_X, FP_Y, PAPER_T + 0.0003),
+       (0, 0, FP_ROT), parent=DRAW,
+       extra={"system": "Drawing", "role": "building_origin",
+              "footprint_w": 0.520, "footprint_d": 0.400})
+anchor("Drawing_Origin", (0, 0, PAPER_T), parent=DRAW,
+       extra={"system": "Drawing", "role": "sheet_origin"})
+anchor("Pencil_Tip_Anchor", (-0.043, 0.983, DTOP + 0.0062),
+       extra={"role": "draw_start"})
 
 # ================================================================ pin-up wall
 BYF = Y1 - 0.055                      # front face of the board
@@ -624,15 +914,32 @@ for cx, cz, w, h in ((-0.10, 2.855, 4.55, 0.030), (-0.10, 0.785, 4.55, 0.030),
 mk(bm, "Board_Frame", MAT["dark_m"], C["Pinboard"], "Pinboard")
 
 random.seed(23)
-SHEETS = [(-1.72, 2.35, 0.66, 0.90, -1.6), (-1.02, 2.30, 0.54, 0.74, 2.4),
-          (-0.30, 2.42, 0.78, 0.56, -0.9), (0.52, 2.34, 0.60, 0.84, 1.8),
-          (1.30, 2.40, 0.70, 0.52, -2.2), (1.86, 2.16, 0.44, 0.62, 1.1),
-          (-1.90, 1.34, 0.56, 0.78, 1.4), (-1.16, 1.28, 0.72, 0.54, -1.9),
-          (-0.24, 1.30, 0.62, 0.86, 0.8), (0.56, 1.24, 0.80, 0.58, -1.2),
-          (1.44, 1.32, 0.52, 0.74, 2.0)]
+# The board is the project's documentation set. The seven sheets a construction
+# story actually turns on get their own objects so labels and highlight states
+# can attach to a named document; the rest stay pooled, because fragmenting
+# every scrap of paper buys nothing.
+SHEETS = [
+    (-1.72, 2.35, 0.66, 0.90, -1.6, "site",         "Sheet_Site"),
+    (-1.02, 2.30, 0.54, 0.74,  2.4, "plan",         "Sheet_Plan"),
+    (-0.30, 2.42, 0.78, 0.56, -0.9, "structure",    "Sheet_Structure"),
+    ( 0.52, 2.34, 0.60, 0.84,  1.8, "section",      "Sheet_Section"),
+    ( 1.30, 2.40, 0.70, 0.52, -2.2, "elevation",    "Sheet_Elevation"),
+    ( 1.86, 2.16, 0.44, 0.62,  1.1, "axo",          None),
+    (-1.90, 1.34, 0.56, 0.78,  1.4, "elevation",    None),
+    (-1.16, 1.28, 0.72, 0.54, -1.9, "coordination", "Sheet_Coordination"),
+    (-0.24, 1.30, 0.62, 0.86,  0.8, "plan",         None),
+    ( 0.56, 1.24, 0.80, 0.58, -1.2, "phasing",      "Sheet_Phasing"),
+    ( 1.44, 1.32, 0.52, 0.74,  2.0, "section",      None),
+]
 bm = bmesh.new()
-for (cx, cz, w, h, r) in SHEETS:
-    box(bm, (w, 0.0016, h), loc=(cx, BYF - 0.004, cz), rot=(0, math.radians(r), 0))
+for (cx, cz, w, h, r, kind, name) in SHEETS:
+    if name:                                        # its own object
+        bmS = bmesh.new()
+        box(bmS, (w, 0.0016, h), loc=(cx, BYF - 0.004, cz), rot=(0, math.radians(r), 0))
+        mk(bmS, name, MAT["paper"], C["Pinboard"], "Pinboard",
+           extra={"doc": kind, "sheet": name})
+    else:
+        box(bm, (w, 0.0016, h), loc=(cx, BYF - 0.004, cz), rot=(0, math.radians(r), 0))
 mk(bm, "Board_Sheets", MAT["paper"], C["Pinboard"], "Pinboard")
 
 # graphic linework only: plan, elevation, section, axo. no glyphs anywhere.
@@ -647,7 +954,63 @@ def draw_sheet(bmD, bmL, cx, cz, w, h, r, kind):
     top = ih/2; bot = -ih/2 + h*0.09
     LN(bmD, cx, cz, r, -iw/2 + iw*0.16, -h*0.40, iw*0.32, 0.014)          # title strip
     LN(bmD, cx, cz, r, -iw/2 + iw*0.16, -h*0.40 + 0.020, iw*0.32, 0.0022)
-    if kind == 0:                                                          # PLAN
+
+    if kind == "site":                                                     # SITE PLAN
+        for (dx, dz, ww, hh) in ((0, top, iw, 0.006), (0, bot, iw, 0.006),
+                                 (-iw/2, (top+bot)/2, 0.006, top-bot),
+                                 (iw/2, (top+bot)/2, 0.006, top-bot)):
+            LN(bmD, cx, cz, r, dx, dz, ww, hh)                             # site boundary
+        LN(bmD, cx, cz, r, 0, bot + (top-bot)*0.16, iw*1.02, 0.012)        # the road
+        LN(bmL, cx, cz, r, 0, bot + (top-bot)*0.16, iw*1.02, 0.0026)
+        LN(bmL, cx, cz, r, iw*0.06, (top+bot)/2 + (top-bot)*0.10,          # our plot
+           iw*0.42, (top-bot)*0.34)
+        for k in range(5):                                                 # neighbours
+            LN(bmD, cx, cz, r, -iw*0.34 + k*iw*0.06, top - (top-bot)*0.18,
+               iw*0.04, (top-bot)*0.22)
+        for k in range(7):                                                 # north point
+            a = math.tau*k/7
+            LN(bmD, cx, cz, r, -iw*0.38 + math.cos(a)*0.016,
+               bot + (top-bot)*0.40 + math.sin(a)*0.016, 0.010, 0.0026)
+    elif kind == "structure":                                              # STRUCTURAL
+        for k in range(6):
+            LN(bmD, cx, cz, r, -iw*0.34 + k*iw*0.136, (top+bot)/2, 0.0022, top-bot)
+        for k in range(4):
+            LN(bmD, cx, cz, r, 0, bot + (top-bot)*(k+0.4)/3.6, iw*0.90, 0.0022)
+        for kx in range(6):                                                # columns
+            for kz in range(4):
+                LN(bmD, cx, cz, r, -iw*0.34 + kx*iw*0.136,
+                   bot + (top-bot)*(kz+0.4)/3.6, 0.010, 0.010)
+        LN(bmL, cx, cz, r, -iw*0.20, (top+bot)/2, iw*0.16, (top-bot)*0.34) # core zone
+        for k in range(3):                                                 # transfer beam
+            LN(bmD, cx, cz, r, iw*0.10, bot + (top-bot)*(k+0.4)/3.6 + 0.008,
+               iw*0.54, 0.0055)
+    elif kind == "coordination":                                           # COORDINATION
+        for k in range(5):                                                 # base plan, light
+            LN(bmD, cx, cz, r, 0, bot + (top-bot)*(k+0.3)/4.6, iw*0.86, 0.0018)
+        for k in range(4):
+            LN(bmD, cx, cz, r, -iw*0.30 + k*iw*0.20, (top+bot)/2, 0.0018, (top-bot)*0.84)
+        for k in range(5):                                                 # services overlay
+            LN(bmL, cx, cz, r, -iw*0.02, bot + (top-bot)*(k+0.55)/4.6, iw*0.78, 0.0038)
+        LN(bmL, cx, cz, r, iw*0.22, (top+bot)/2, 0.0038, (top-bot)*0.70)
+        for (ddx, ddz) in ((-iw*0.18, (top+bot)/2 + (top-bot)*0.16),       # clash marks
+                           (iw*0.22, (top+bot)/2 - (top-bot)*0.22)):
+            for k in range(8):
+                a = math.tau*k/8
+                LN(bmL, cx, cz, r, ddx + math.cos(a)*0.019, ddz + math.sin(a)*0.019,
+                   0.012, 0.0032)
+    elif kind == "phasing":                                                # PHASING BAR CHART
+        LN(bmD, cx, cz, r, 0, top - 0.010, iw, 0.0030)
+        LN(bmD, cx, cz, r, -iw/2, (top+bot)/2, 0.0030, top-bot)
+        BARS = ((0.62, 0), (0.44, 1), (0.78, 1), (0.36, 2), (0.58, 2), (0.30, 3))
+        for k, (ln_, tier) in enumerate(BARS):
+            zz = top - 0.030 - k*(top-bot)*0.135
+            off = (-iw/2) + iw*0.04 + tier*iw*0.06
+            LN(bmD if tier < 2 else bmL, cx, cz, r,
+               off + iw*ln_*0.5, zz, iw*ln_, 0.0115)
+        for k in range(4):                                                 # phase gridlines
+            LN(bmD, cx, cz, r, -iw*0.30 + k*iw*0.24, (top+bot)/2 - 0.010,
+               0.0016, (top-bot)*0.86)
+    elif kind == "plan":                                                   # PLAN
         for (dx, dz, ww, hh) in ((0, top, iw, 0.010), (0, bot, iw, 0.010),
                                  (-iw/2, (top+bot)/2, 0.010, top-bot),
                                  (iw/2, (top+bot)/2, 0.010, top-bot)):
@@ -660,7 +1023,7 @@ def draw_sheet(bmD, bmL, cx, cz, w, h, r, kind):
             a = math.tau*k/8
             LN(bmL, cx, cz, r, -iw*0.28 + math.cos(a)*0.030,
                (top+bot)/2 + math.sin(a)*0.030, 0.014, 0.0035)
-    elif kind == 1:                                                        # ELEVATION
+    elif kind == "elevation":                                              # ELEVATION
         LN(bmD, cx, cz, r, 0, bot, iw*1.06, 0.010)                         # ground
         LN(bmD, cx, cz, r, -iw*0.30, (top+bot)/2, 0.007, top-bot)
         LN(bmD, cx, cz, r, iw*0.34, (top+bot)/2 - (top-bot)*0.16, 0.007, (top-bot)*0.68)
@@ -672,7 +1035,7 @@ def draw_sheet(bmD, bmL, cx, cz, w, h, r, kind):
         for k in range(6):                                                 # a tree, as a blob
             a = math.tau*k/6
             LN(bmD, cx, cz, r, iw*0.44 + math.cos(a)*0.018, bot + 0.045 + math.sin(a)*0.018, 0.012, 0.0035)
-    elif kind == 2:                                                        # SECTION
+    elif kind == "section":                                                # SECTION
         LN(bmD, cx, cz, r, 0, bot, iw*1.02, 0.008)
         for k in range(10):                                                # ground hatch
             LN(bmD, cx, cz, r, -iw/2 + k*iw/9, bot - 0.016, 0.0022, 0.024)
@@ -688,13 +1051,13 @@ def draw_sheet(bmD, bmL, cx, cz, w, h, r, kind):
                0.0035, 0.040)
         LN(bmL, cx, cz, r, 0.006, bot + 0.030 + 1.6*(top-bot)*0.24, 0.0040, (top-bot)*0.62)
 
-for i2, (cx, cz, w, h, r) in enumerate(SHEETS):
-    draw_sheet(bmD, bmL, cx, cz, w, h, r, i2 % 4)
+for (cx, cz, w, h, r, kind, _nm) in SHEETS:
+    draw_sheet(bmD, bmL, cx, cz, w, h, r, kind)
 mk(bmL, "Board_Linework_Blue", MAT["blue"], C["Pinboard"], "Pinboard")
 mk(bmD, "Board_Linework_Dark", MAT["dark_m"], C["Pinboard"], "Pinboard")
 
 bm = bmesh.new()                                    # tacks
-for (cx, cz, w, h, r) in SHEETS:
+for (cx, cz, w, h, r, _k, _n) in SHEETS:
     cyl(bm, 0.0075, 0.012, loc=(cx, BYF - 0.010, cz + h/2 - 0.028),
         rot=(math.pi/2, 0, 0), verts=8)
 mk(bm, "Board_Tacks", MAT["brushed"], C["Pinboard"], "Pinboard", smooth=True)
@@ -708,6 +1071,27 @@ bm = bmesh.new()
 for k in range(3):
     box(bm, (0.088, 0.006, 0.088), loc=(1.90, BYF - 0.006, 0.98 + k*0.105), rot=(0, math.radians(1.5*k), 0))
 mk(bm, "Board_Swatches", MAT["walnut"], C["Pinboard"], "Pinboard")
+
+# ---- semantic anchors for in-world annotation
+# Helper empties only: predictable transforms, no geometry, nothing that renders.
+# They exist so HTML labels can be pinned to the thing they describe instead of
+# to hand-tuned screen offsets.
+anchor("Anchor_Preconstruction_Desk", (0.06, 1.24, DTOP + 0.34),
+       extra={"topic": "preconstruction"})
+anchor("Anchor_Drawing", (0, 0, 0.16), parent=DRAW,
+       extra={"topic": "documentation", "system": "Drawing"})
+anchor("Anchor_Pinboard_Site",         (-1.72, BYF - 0.07, 2.35), extra={"topic": "site"})
+anchor("Anchor_Pinboard_Structure",    (-0.30, BYF - 0.07, 2.42), extra={"topic": "structure"})
+anchor("Anchor_Pinboard_Coordination", (-1.16, BYF - 0.07, 1.28), extra={"topic": "coordination"})
+anchor("Anchor_Window_Context",        (X0 + 0.42, 0.66, 1.82),   extra={"topic": "context"})
+# A ladder up the tower, one label height per delivery phase.
+for _nm, _dz, _ph in (("Anchor_Building_Foundation", 0.05, "foundation"),
+                      ("Anchor_Building_Structure",  0.26, "structure"),
+                      ("Anchor_Building_Envelope",   0.40, "envelope"),
+                      ("Anchor_Building_Completion", 0.64, "completion")):
+    anchor(_nm, (MX, MY, BLD_Z + _dz), (0, 0, MROT),
+           extra={"topic": "delivery", "phase": _ph,
+                  "phase_index": PHASE_INDEX[_ph]})
 
 # ================================================================ credenza / material library
 CRX = X1 - 0.235

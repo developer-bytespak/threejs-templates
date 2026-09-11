@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import {
+  ANCHOR_GROUP,
   BUILDING_GROUP,
   MODEL_URL,
   OUTLINE_GROUP,
@@ -202,6 +203,76 @@ export function useRoomModel() {
       })
     }
 
+    // Semantic nodes, meshes and empties alike.
+    //
+    // Everything above walks `isMesh` only, which was fine while the model was
+    // nothing but geometry. The drawing pass added transform-only nodes —
+    // Drawing_System, the anchors, the spawn point — and those carry the
+    // coordinate relationships the whole drawing-to-building sequence depends
+    // on. Skipping non-meshes would mean re-deriving those positions by hand,
+    // which is exactly the sort of guesswork the anchors exist to remove.
+    const nodes = new Map()
+    const anchors = new Map()
+    const drawingStages = new Map()
+    let drawingSystem = null
+    let drawingPaper = null
+    let drawingSurface = null
+    let drawingFootprint = null
+
+    scene.traverse((object) => {
+      if (object.name) nodes.set(object.name, object)
+
+      const data = object.userData ?? {}
+
+      if (data.anchor || groupNameOf(object) === ANCHOR_GROUP) {
+        anchors.set(object.name, {
+          node: object,
+          position: object.getWorldPosition(new THREE.Vector3()),
+          quaternion: object.getWorldQuaternion(new THREE.Quaternion()),
+          data,
+        })
+      }
+
+      if (data.system !== 'Drawing') return
+      if (object.isObject3D && !object.isMesh && data.group === 'Drawing') {
+        drawingSystem = drawingSystem ?? object
+      }
+      if (typeof data.stage === 'number') drawingStages.set(data.stage, object)
+      if (data.role === 'paper') drawingPaper = object
+      if (data.role === 'animation_surface') drawingSurface = object
+      if (data.role === 'spawn_footprint') drawingFootprint = object
+    })
+
+    const drawing = drawingSystem
+      ? {
+          system: drawingSystem,
+          paper: drawingPaper,
+          surface: drawingSurface,
+          footprint: drawingFootprint,
+          stages: drawingStages,
+          spawn: anchors.get('Building_Spawn_Anchor') ?? null,
+          pencil: anchors.get('Pencil_Tip_Anchor') ?? null,
+        }
+      : null
+
+    if (import.meta.env.DEV) {
+      if (!drawing) {
+        console.warn(
+          '[room] no Drawing_System node in this model — the drawing sequence',
+          'will be skipped. Expected a node with userData.system === "Drawing".',
+        )
+      } else {
+        const missing = [1, 2, 3, 4, 5, 6, 7].filter((s) => !drawingStages.has(s))
+        if (missing.length) {
+          console.warn('[room] drawing stages missing from the model:', missing)
+        }
+      }
+      console.info(
+        `[room] semantic nodes: ${nodes.size} named, ${anchors.size} anchors,`,
+        `${drawingStages.size} drawing stages`,
+      )
+    }
+
     // The room shell only — what the camera has to stay inside.
     const bounds = shell.clone().translate(scene.position)
     const size = bounds.getSize(new THREE.Vector3())
@@ -218,7 +289,7 @@ export function useRoomModel() {
       }
     }
 
-    return { scene, size, bounds, focus, building }
+    return { scene, size, bounds, focus, building, nodes, anchors, drawing }
   }, [scene])
 }
 

@@ -1,7 +1,23 @@
+/* /construction-two — construction documentation interface
+   ------------------------------------------------------------------
+   One continuous world. The type is Helvetica, set tight and small
+   except where a single line is allowed to be large; the surfaces are
+   tracing paper and hairline rules rather than cards and glass. */
+
 .stage {
   position: fixed;
   inset: 0;
   z-index: 0;
+
+  --ink: #f2f4f8;
+  --ink-dim: rgba(242, 244, 248, 0.56);
+  --ink-faint: rgba(242, 244, 248, 0.3);
+  --blue: #8fb3e6;
+  --paper: #ece7dc;
+  --paper-ink: #23262c;
+  --sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
+  font-family: var(--sans);
 }
 
 .stage canvas {
@@ -9,161 +25,561 @@
   touch-action: pan-y;
 }
 
-/* Darkens the frame edges so captions always have something to sit on,
+/* Holds the frame edges down so type always has something to sit on,
    whichever way the camera happens to be pointing. */
 .vignette {
   position: absolute;
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(
-      120% 90% at 50% 40%,
-      transparent 32%,
-      rgba(6, 8, 13, 0.6) 100%
-    ),
-    linear-gradient(
-      to top,
-      rgba(6, 8, 13, 0.92) 0%,
-      rgba(6, 8, 13, 0.6) 24%,
-      transparent 54%
-    ),
-    linear-gradient(to right, rgba(6, 8, 13, 0.65), transparent 40%);
+    radial-gradient(130% 95% at 52% 42%, transparent 38%, rgba(6, 8, 13, 0.58) 100%),
+    linear-gradient(to top, rgba(6, 8, 13, 0.88) 0%, rgba(6, 8, 13, 0.42) 26%, transparent 56%),
+    linear-gradient(to right, rgba(6, 8, 13, 0.55), transparent 42%);
 }
 
-.captions {
+.sr-only {
   position: absolute;
-  left: clamp(24px, 6vw, 88px);
-  bottom: clamp(56px, 13vh, 132px);
-  width: min(420px, 76vw);
-  text-align: left;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------------------------------------------------------------- chapters */
+.story {
+  position: absolute;
+  inset: 0;
   pointer-events: none;
+  color: var(--ink);
 }
 
-.caption {
+.chapter {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  inset: 0;
   opacity: 0;
-  transform: translateY(14px);
-  transition:
-    opacity 0.7s ease,
-    transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
-  color: #f3f5fb;
+  visibility: hidden;
+  transition: opacity 1s ease, visibility 0s linear 1s;
 }
 
-.caption[data-active='true'] {
+.chapter[data-on='true'] {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 1s ease, visibility 0s;
+}
+
+/* ---------------------------------------------------------------- type */
+.display {
+  position: absolute;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  font-weight: 500;
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+  text-shadow: 0 2px 30px rgba(6, 8, 13, 0.6);
+}
+
+.display span {
+  display: block;
+  opacity: 0;
+  transform: translateY(0.28em);
+  transition: opacity 1.15s ease, transform 1.3s cubic-bezier(0.16, 0.84, 0.24, 1);
+}
+
+.chapter[data-on='true'] .display span {
   opacity: 1;
   transform: none;
 }
 
-.caption__eyebrow {
-  margin: 0 0 10px;
-  font-size: 0.6875rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: rgba(243, 245, 251, 0.78);
+.chapter[data-on='true'] .display span:nth-child(2) {
+  transition-delay: 0.16s;
 }
 
-.caption__title {
-  margin: 0 0 12px;
-  font-size: clamp(1.75rem, 4vw, 2.75rem);
-  font-weight: 500;
-  line-height: 1.08;
-  letter-spacing: -0.02em;
-  text-shadow: 0 2px 24px rgba(6, 8, 13, 0.75);
+/* 01 — sits in the negative space above the desk, left of the model */
+.display--lead {
+  left: clamp(24px, 5.6vw, 84px);
+  top: clamp(96px, 17vh, 200px);
+  font-size: clamp(2.4rem, 6.4vw, 5.4rem);
 }
 
-.caption__body {
-  margin: 0;
-  font-size: 0.9375rem;
-  line-height: 1.6;
-  color: rgba(243, 245, 251, 0.78);
-  text-shadow: 0 1px 16px rgba(6, 8, 13, 0.85);
-}
-
-.rail {
+/* 04 — small, because the sheet is the subject here. Stacked in flow with its
+   tag rather than each absolutely placed, so the two can never collide however
+   the type scales. */
+.quietblock {
   position: absolute;
-  right: clamp(18px, 3vw, 40px);
-  top: 50%;
-  transform: translateY(-50%);
+  left: clamp(24px, 5.6vw, 84px);
+  bottom: clamp(88px, 17vh, 168px);
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
-.rail__dot {
-  width: 8px;
-  height: 8px;
-  padding: 0;
-  border: 0;
+.quietblock .tag {
+  position: static;
+}
+
+.display--quiet {
+  position: static;
+  font-size: clamp(1.7rem, 3.4vw, 2.9rem);
+}
+
+/* 06 — the close */
+.display--final {
+  position: static;
+  font-size: clamp(2.2rem, 5.6vw, 4.6rem);
+}
+
+.metaline {
+  position: absolute;
+  left: clamp(24px, 5.6vw, 84px);
+  top: clamp(64px, 11.5vh, 138px);
+  margin: 0;
+  display: flex;
+  gap: 1.1rem;
+  font-size: 0.625rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.metaline span + span::before {
+  content: '/';
+  margin-right: 1.1rem;
+  color: var(--ink-faint);
+}
+
+.metaline--context {
+  top: auto;
+  bottom: clamp(56px, 11vh, 120px);
+}
+
+.tag {
+  position: absolute;
+  margin: 0;
+  font-size: 0.625rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+/* ---------------------------------------------------------------- 01: tracing paper */
+/* One reusable editorial surface. Not a card: a sheet of trace with a
+   drafting grid printed through it, pinned at a slight angle. */
+.tracing {
+  position: absolute;
+  right: clamp(22px, 5vw, 86px);
+  bottom: clamp(56px, 12vh, 132px);
+  width: min(268px, 62vw);
+  padding: 18px 20px 20px;
+  color: var(--paper-ink);
+  background-color: rgba(236, 231, 220, 0.9);
+  background-image:
+    linear-gradient(rgba(64, 92, 140, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(64, 92, 140, 0.16) 1px, transparent 1px);
+  background-size: 16px 16px, 16px 16px;
+  box-shadow: 0 18px 46px rgba(6, 8, 13, 0.42);
+  transform: rotate(-0.7deg) translateY(14px);
+  opacity: 0;
+  transition: opacity 1.1s ease 0.12s,
+    transform 1.25s cubic-bezier(0.16, 0.84, 0.24, 1) 0.12s;
+}
+
+.tracing[data-on='true'] {
+  opacity: 1;
+  transform: rotate(-0.7deg);
+}
+
+.tracing::after {
+  /* the pin */
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 26px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  background: rgba(243, 245, 251, 0.28);
+  background: #6d747d;
+  box-shadow: 0 2px 5px rgba(6, 8, 13, 0.5);
+}
+
+.tracing__tag {
+  margin: 0 0 14px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid rgba(35, 38, 44, 0.32);
+  font-size: 0.5625rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: rgba(35, 38, 44, 0.68);
+}
+
+.tracing__lead {
+  margin: 0 0 16px;
+  font-size: 1.3125rem;
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+
+.tracing__lead span {
+  display: block;
+}
+
+.tracing__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.tracing__list li {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 6px;
+  border-top: 1px solid rgba(35, 38, 44, 0.18);
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(35, 38, 44, 0.82);
+}
+
+.tracing__list li::after {
+  content: '—';
+  color: rgba(35, 38, 44, 0.38);
+}
+
+/* ---------------------------------------------------------------- 02: wall annotations */
+.annotation-wrap {
+  pointer-events: none;
+}
+
+.annotation {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.85s ease, transform 1s cubic-bezier(0.16, 0.84, 0.24, 1);
+}
+
+.annotation[data-on='true'] {
+  opacity: 1;
+  transform: none;
+}
+
+.annotation[data-side='right'] {
+  flex-direction: row-reverse;
+  transform: translateX(6px);
+}
+
+.annotation[data-side='right'][data-on='true'] {
+  transform: none;
+}
+
+.annotation__leader {
+  width: 34px;
+  height: 1px;
+  background: var(--blue);
+  opacity: 0.85;
+  align-self: center;
+}
+
+.annotation__index {
+  font-size: 0.5625rem;
+  letter-spacing: 0.16em;
+  color: var(--blue);
+  font-variant-numeric: tabular-nums;
+}
+
+.annotation__text {
+  font-size: 0.6875rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-shadow: 0 1px 12px rgba(6, 8, 13, 0.9);
+}
+
+/* ---------------------------------------------------------------- 03: context */
+.context {
+  position: absolute;
+  inset: 0;
+}
+
+.context__word {
+  position: absolute;
+  font-size: clamp(1.6rem, 4.6vw, 3.6rem);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  opacity: 0;
+  transform: translateY(0.22em);
+  transition: opacity 1.25s ease, transform 1.4s cubic-bezier(0.16, 0.84, 0.24, 1);
+  text-shadow: 0 2px 30px rgba(6, 8, 13, 0.72);
+}
+
+.context__word[data-on='true'] {
+  opacity: 1;
+  transform: none;
+}
+
+.context__word--1 { left: 7vw;  top: 26vh; }
+.context__word--2 { left: 44vw; top: 52vh; }
+.context__word--3 { right: 9vw; top: 30vh; }
+
+/* ---------------------------------------------------------------- 04: plot meter */
+/* A hairline that fills as the drawing plots. The only motion on screen
+   during the quietest chapter. */
+.plotmeter {
+  position: absolute;
+  left: clamp(24px, 5.6vw, 84px);
+  bottom: clamp(62px, 12vh, 124px);
+  width: min(210px, 44vw);
+  height: 1px;
+  margin: 0;
+  background: rgba(242, 244, 248, 0.18);
+  overflow: hidden;
+}
+
+.plotmeter i {
+  display: block;
+  height: 100%;
+  width: calc(var(--v, 0) * 100%);
+  background: var(--blue);
+}
+
+/* ---------------------------------------------------------------- 05: build */
+.pole {
+  position: absolute;
+  font-size: clamp(1.1rem, 2.6vw, 2rem);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-shadow: 0 2px 26px rgba(6, 8, 13, 0.75);
+  transition: opacity 1.1s ease, transform 1.1s ease;
+}
+
+.pole--plan {
+  left: clamp(22px, 5vw, 76px);
+  bottom: 26vh;
+  opacity: 0.9;
+}
+
+.pole--plan[data-dim='true'] {
+  opacity: 0.26;
+}
+
+.pole--structure {
+  right: clamp(78px, 11vw, 150px);
+  top: 24vh;
+  opacity: 0;
+  transform: translateY(0.3em);
+}
+
+.pole--structure[data-on='true'] {
+  opacity: 1;
+  transform: none;
+}
+
+.phases {
+  position: absolute;
+  right: clamp(70px, 9vw, 132px);
+  bottom: clamp(58px, 13vh, 140px);
+  display: grid;
+  gap: 13px;
+}
+
+.phase {
+  display: grid;
+  grid-template-columns: 34px auto 1fr;
+  align-items: center;
+  gap: 10px;
+  opacity: 0.34;
+  transition: opacity 0.7s ease;
+}
+
+.phase[data-state='on'] { opacity: 1; }
+.phase[data-state='done'] { opacity: 0.6; }
+
+.phase__rule {
+  height: 1px;
+  width: 12px;
+  background: currentColor;
+  justify-self: end;
+  transition: width 0.8s cubic-bezier(0.16, 0.84, 0.24, 1), background 0.55s ease;
+}
+
+.phase[data-state='on'] .phase__rule {
+  width: 34px;
+  background: var(--blue);
+}
+
+.phase[data-state='done'] .phase__rule {
+  width: 20px;
+}
+
+.phase__index {
+  font-size: 0.5625rem;
+  letter-spacing: 0.14em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+}
+
+.phase__label {
+  font-size: 0.625rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------------- 06: close */
+.final {
+  position: absolute;
+  left: clamp(24px, 5.6vw, 84px);
+  bottom: clamp(64px, 14vh, 150px);
+  width: min(560px, 84vw);
+  pointer-events: auto;
+}
+
+.sectors {
+  margin: 22px 0 20px;
+  padding: 14px 0 0;
+  border-top: 1px solid rgba(242, 244, 248, 0.18);
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.4rem;
+  font-size: 0.625rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.actions {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.6rem;
+}
+
+.action {
+  position: relative;
+  padding-bottom: 5px;
+  font-size: 0.8125rem;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(242, 244, 248, 0.4);
+  transition: border-color 0.3s ease, color 0.3s ease;
+}
+
+.action:hover,
+.action:focus-visible {
+  color: #fff;
+  border-bottom-color: var(--blue);
+}
+
+/* ---------------------------------------------------------------- rail */
+.rail {
+  position: absolute;
+  right: clamp(16px, 2.6vw, 34px);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 16px;
+  pointer-events: auto;
+}
+
+.rail__tick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
   cursor: pointer;
-  transition:
-    background 0.3s ease,
-    transform 0.3s ease;
+  font-family: inherit;
 }
 
-.rail__dot:hover {
-  background: rgba(243, 245, 251, 0.6);
+.rail__tick i {
+  display: block;
+  width: 14px;
+  height: 1px;
+  background: rgba(242, 244, 248, 0.34);
+  transition: width 0.6s cubic-bezier(0.16, 0.84, 0.24, 1), background 0.4s ease;
 }
 
-.rail__dot[data-active='true'] {
-  background: #f3f5fb;
-  transform: scale(1.45);
+.rail__tick:hover i,
+.rail__tick:focus-visible i {
+  background: rgba(242, 244, 248, 0.75);
 }
 
+.rail__tick[data-active='true'] i {
+  width: 30px;
+  background: var(--ink);
+}
+
+.rail__label {
+  order: -1;
+  font-size: 0.5625rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  opacity: 0;
+  transform: translateX(6px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.rail__tick[data-active='true'] .rail__label,
+.rail__tick:hover .rail__label,
+.rail__tick:focus-visible .rail__label {
+  opacity: 1;
+  transform: none;
+}
+
+.rail__tick:focus-visible {
+  outline: 1px solid var(--blue);
+  outline-offset: 6px;
+}
+
+/* ---------------------------------------------------------------- misc */
 .hint {
   position: absolute;
   left: 50%;
-  bottom: 32px;
+  bottom: 30px;
   translate: -50% 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  font-size: 0.6875rem;
-  letter-spacing: 0.22em;
+  font-size: 0.625rem;
+  letter-spacing: 0.26em;
   text-transform: uppercase;
-  color: rgba(243, 245, 251, 0.5);
+  color: var(--ink-faint);
   opacity: 0;
   transition: opacity 0.6s ease;
   pointer-events: none;
 }
 
-.hint[data-visible='true'] {
-  opacity: 1;
-}
+.hint[data-visible='true'] { opacity: 1; }
 
 .hint i {
   width: 1px;
-  height: 40px;
-  background: linear-gradient(
-    to bottom,
-    rgba(243, 245, 251, 0.6),
-    transparent
-  );
+  height: 38px;
+  background: linear-gradient(to bottom, rgba(242, 244, 248, 0.55), transparent);
   animation: hint-fall 2s ease-in-out infinite;
 }
 
 @keyframes hint-fall {
-  0% {
-    transform: scaleY(0);
-    transform-origin: top;
-  }
-  50% {
-    transform: scaleY(1);
-    transform-origin: top;
-  }
-  51% {
-    transform: scaleY(1);
-    transform-origin: bottom;
-  }
-  100% {
-    transform: scaleY(0);
-    transform-origin: bottom;
-  }
+  0%   { transform: scaleY(0); transform-origin: top; }
+  50%  { transform: scaleY(1); transform-origin: top; }
+  51%  { transform: scaleY(1); transform-origin: bottom; }
+  100% { transform: scaleY(0); transform-origin: bottom; }
 }
 
 .track {
@@ -182,46 +598,108 @@
   justify-content: center;
   gap: 10px;
   background: #0e1017;
-  color: #f3f5fb;
+  color: var(--ink);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 .viewer-overlay__label {
   margin: 0;
-  font-size: 0.75rem;
-  letter-spacing: 0.22em;
+  font-size: 0.6875rem;
+  letter-spacing: 0.28em;
   text-transform: uppercase;
-  opacity: 0.7;
+  opacity: 0.62;
 }
 
 .viewer-overlay__track {
   width: min(280px, 60vw);
-  height: 2px;
-  border-radius: 999px;
-  background: rgba(243, 245, 251, 0.15);
+  height: 1px;
+  background: rgba(242, 244, 248, 0.16);
   overflow: hidden;
 }
 
 .viewer-overlay__bar {
   height: 100%;
-  background: #f3f5fb;
-  transition: width 0.2s ease;
+  background: var(--ink);
+  transition: width 0.35s linear;
 }
 
 .viewer-overlay__value {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
-  opacity: 0.55;
+  opacity: 0.5;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .caption,
-  .rail__dot,
-  .hint {
-    transition-duration: 0.01ms;
+/* ---------------------------------------------------------------- mobile */
+/* Not a shrunk desktop. Fewer labels, smaller display type, the paper
+   framed across the bottom instead of floated right — but the drawing
+   and the build survive intact, because they are the point. */
+@media (max-width: 760px) {
+  .display--lead { font-size: clamp(2rem, 10vw, 2.9rem); top: clamp(78px, 13vh, 120px); }
+  .display--quiet { font-size: clamp(1.4rem, 6.6vw, 1.9rem); }
+  .quietblock { bottom: clamp(150px, 26vh, 210px); gap: 10px; }
+  .display--final { font-size: clamp(1.9rem, 8.6vw, 2.6rem); }
+
+  .tracing {
+    right: 16px;
+    left: 16px;
+    bottom: clamp(40px, 9vh, 84px);
+    width: auto;
+    padding: 14px 16px 16px;
   }
 
-  .hint i {
-    animation: none;
+  .tracing__lead { font-size: 1.125rem; }
+  .tracing__list { grid-template-columns: 1fr 1fr; gap: 4px 16px; }
+
+  /* Four labels on a phone is clutter; the last one steps out. */
+  .annotation[data-side='right'] { display: none; }
+  .annotation__leader { width: 20px; }
+  .annotation__text { font-size: 0.5625rem; letter-spacing: 0.16em; }
+
+  .context__word { font-size: clamp(1.3rem, 8vw, 2rem); }
+  .context__word--1 { left: 8vw;  top: 22vh; }
+  .context__word--2 { left: 34vw; top: 46vh; }
+  .context__word--3 { right: 8vw; top: 66vh; }
+
+  .pole--plan { bottom: 32vh; }
+  .pole--structure { right: 16px; top: 18vh; }
+
+  .phases { right: 46px; bottom: clamp(40px, 9vh, 90px); gap: 9px; }
+  .phase { grid-template-columns: 22px auto 1fr; gap: 7px; }
+  .phase__rule { width: 8px; }
+  .phase[data-state='on'] .phase__rule { width: 22px; }
+  .phase__label { font-size: 0.5rem; letter-spacing: 0.16em; }
+
+  .final { left: 16px; right: 16px; width: auto; }
+  .sectors { gap: 0.9rem; font-size: 0.5625rem; }
+  .actions { gap: 1.1rem; }
+  .action { font-size: 0.75rem; }
+
+  .rail { right: 10px; gap: 12px; }
+  .rail__label { display: none; }
+  .metaline { gap: 0.7rem; font-size: 0.5rem; letter-spacing: 0.2em; }
+}
+
+/* ---------------------------------------------------------------- reduced motion */
+/* Transitions collapse, but nothing is removed: every chapter still shows
+   its copy, the drawing still stages in order and the building still
+   assembles — they simply arrive rather than travel. */
+@media (prefers-reduced-motion: reduce) {
+  .chapter,
+  .display span,
+  .tracing,
+  .annotation,
+  .context__word,
+  .pole,
+  .phase,
+  .phase__rule,
+  .rail__tick i,
+  .rail__label,
+  .hint {
+    transition-duration: 0.01ms !important;
+    transform: none !important;
   }
+
+  .tracing[data-on='true'] { transform: rotate(-0.7deg) !important; }
+  .hint i { animation: none; }
 }

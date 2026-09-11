@@ -41,9 +41,16 @@ MAT = {
   "hair":     M("mat_hair",         "#3B332C", 0.85, lit="#3B332C", shadow="#221D18"),
   "plant":    M("mat_plant",        "#5B6A51", 0.88, lit="#5B6A51", shadow="#36402E"),
   "soil":     M("mat_soil",         "#4A423A", 0.95, lit="#4A423A", shadow="#332D27"),
-  "city_n":   M("mat_city_near",    "#93A0AA", 0.95, lit="#93A0AA", shadow="#93A0AA"),
-  "city_f":   M("mat_city_far",     "#BAC5CD", 0.95, lit="#BAC5CD", shadow="#BAC5CD"),
+  # outside the glass: four value steps toward the sky. Unlit — distance in a
+  # flat palette is carried by value alone, so each band is one step lighter.
+  "city_g":   M("mat_city_glass",   "#5C6974", 0.95, lit="#5C6974", shadow="#5C6974"),
+  "city_n":   M("mat_city_near",    "#8795A1", 0.95, lit="#8795A1", shadow="#8795A1"),
+  "city_m":   M("mat_city_mid",     "#9DAAB4", 0.95, lit="#9DAAB4", shadow="#9DAAB4"),
+  "city_f":   M("mat_city_far",     "#B5C1CA", 0.95, lit="#B5C1CA", shadow="#B5C1CA"),
+  "city_h":   M("mat_city_haze",    "#C8D1D8", 0.95, lit="#C8D1D8", shadow="#C8D1D8"),
   "sky":      M("mat_sky",          "#DCE4E8", 0.95, lit="#DCE4E8", shadow="#DCE4E8"),
+  "sheen":    M("mat_glass_sheen",  "#EAF1F6", 0.05, 0.0, 0.16,
+                lit="#EAF1F6", shadow="#EAF1F6"),
   "warm":     M("mat_emissive_warm","#FFD9A0", 0.50, lit="#FFD9A0", shadow="#FFD9A0",
                 emis="#FFD9A0", estr=1.0),
 }
@@ -145,31 +152,112 @@ box(bm, (0.34, WY1-WY0+0.22, 0.045), loc=(X0 + 0.09, (WY0+WY1)/2, WZ0 - 0.022), 
 box(bm, (0.26, WY1-WY0+0.30, 0.035), loc=(X0 - 0.20, (WY0+WY1)/2, WZ0 - 0.05), bevel=0.005)
 mk(bm, "Win_Sill", MAT["wall"], C["Window"], "Window")
 
-bm = bmesh.new()
+bm = bmesh.new()                                            # the pane itself
+# One sealed pane across the whole opening, not an empty hole. It renders
+# translucent on the web side (see TRANSLUCENT_MATERIALS in palette.js): the
+# toon shader tints what is behind it rather than replacing it, so the city
+# reads through the glass. A closed box with front-face culling blends exactly
+# once from any viewpoint, which is why this stays a box rather than a plane.
 box(bm, (0.012, WY1-WY0-FT*2, WZ1-WZ0-FT*2), loc=(X0 - 0.035, (WY0+WY1)/2, (WZ0+WZ1)/2))
 mk(bm, "Win_Glass", MAT["glass"], C["Window"], "Window")
 
-# ---------------------------------------------------------------- skyline (layered, graphic)
-random.seed(11)
-def city_layer(name, x, mtl, n, hmin, hmax, wmin, wmax, spread, z0=0.0):
-    bm = bmesh.new(); y = -spread
-    while y < spread:
-        w = random.uniform(wmin, wmax); h = random.uniform(hmin, hmax)
-        box(bm, (0.22, w, h), loc=(x, y + w/2, z0 + h/2))
-        if random.random() < 0.30:                            # setback cap
-            box(bm, (0.22, w*0.55, h*0.16), loc=(x, y + w/2, z0 + h + h*0.08))
-        y += w + random.uniform(0.10, 0.55)
-    return mk(bm, name, mtl, C["Skyline"], "Skyline")
+bm = bmesh.new()                                            # sheen: what sells it as glass
+# Two raking streaks just inside the pane. Translucency alone reads as a tinted
+# hole; a reflection is the thing that says "there is a surface here". Sitting
+# slightly roomward of the pane, they sort in front of it automatically.
+for (yc, zc, ln, wd) in ((0.10, 1.90, 1.55, 0.20), (1.55, 1.42, 0.95, 0.13)):
+    box(bm, (0.004, wd, ln), loc=(X0 - 0.028, yc, zc), rot=(math.radians(34), 0, 0))
+mk(bm, "Win_Sheen", MAT["sheen"], C["Window"], "Window")
 
-city_layer("City_Far",  -9.2, MAT["city_f"], 0, 2.2, 5.4, 0.7, 2.1, 11.0, z0=-0.6)
-city_layer("City_Mid",  -7.0, MAT["city_n"], 0, 1.6, 4.2, 0.6, 1.7, 9.0,  z0=-0.9)
-bm = bmesh.new()                                              # one nearer marker tower
-box(bm, (0.24, 0.85, 5.2), loc=(-5.6, 3.1, 1.7))
-box(bm, (0.24, 0.45, 0.9), loc=(-5.6, 3.1, 4.6))
-cyl(bm, 0.030, 1.0, loc=(-5.6, 3.1, 5.4), verts=8, r2=0.012)
-mk(bm, "City_Tower", MAT["city_n"], C["Skyline"], "Skyline")
+# ---------------------------------------------------------------- the city outside
+# Four depth bands of real massing, not silhouette cards. Each band steps one
+# value lighter toward the sky, which is the only atmospheric perspective a flat
+# unlit palette can offer — and it is what turns grey boxes into distance.
+#
+# Placement is not guesswork: the sight cone was projected from all six cameras
+# that can see the window, through the 3.50 x 1.90 m opening, onto each band.
+#
+#   x = -6    y -2.3 .. 5.2     z -0.1 .. 3.5
+#   x = -10   y -4.1 .. 9.3     z -1.5 .. 4.7
+#   x = -16   y -6.8 .. 15.4    z -3.6 .. 6.4
+#   x = -24   y -10.4 .. 23.6   z -6.4 .. 8.6
+#
+# Every band drops well below its own lower sightline, so you can look down a
+# gap between two near towers and find another building there, never a void.
+
+def tower(bm, x0, x1, y0, y1, ztop, zbase, bev=0.012,
+          setback=None, cap=None, mast=0.0, plant=()):
+    """One massing block: body, optional setback, roof cap, mast, roof plant."""
+    box(bm, (x1-x0, y1-y0, ztop-zbase), loc=((x0+x1)/2, (y0+y1)/2, (ztop+zbase)/2), bevel=bev)
+    z = ztop
+    if setback:                                  # (inset, height)
+        ins, h = setback
+        box(bm, (x1-x0-ins*2, y1-y0-ins*2, h), loc=((x0+x1)/2, (y0+y1)/2, z + h/2), bevel=bev)
+        z += h
+    if cap:                                      # (overhang, thickness)
+        ov, t = cap
+        box(bm, (x1-x0+ov*2, y1-y0+ov*2, t), loc=((x0+x1)/2, (y0+y1)/2, z + t/2), bevel=bev*0.6)
+        z += t
+    for (fx, fy, w, d, h) in plant:              # roof plant, in 0..1 face coords
+        cx = x0 + (x1-x0)*fx; cy = y0 + (y1-y0)*fy
+        box(bm, (w, d, h), loc=(cx, cy, z + h/2), bevel=0.008)
+    if mast:
+        cyl(bm, 0.036, mast, loc=((x0+x1)/2, (y0+y1)/2, z + mast/2), verts=8, r2=0.012)
+    return z
+
+# --- near band: across the street, the only one you read detail on
+NEAR = [
+    # x0     x1     y0     y1    ztop  setback        cap          mast  plant
+    (-7.05, -5.62, -2.70, -0.95, 2.30, None,          (0.05, 0.09), 0.0,
+        ((0.35, 0.30, 0.30, 0.30, 0.34), (0.68, 0.66, 0.22, 0.42, 0.20))),
+    (-6.84, -5.40, -0.72,  0.86, 2.42, (0.22, 0.34),  (0.06, 0.08), 0.0,
+        ((0.50, 0.45, 0.26, 0.26, 0.28),)),
+    (-7.46, -5.92,  1.06,  2.58, 1.95, None,          (0.07, 0.10), 0.0,
+        ((0.30, 0.35, 0.40, 0.34, 0.22), (0.70, 0.70, 0.30, 0.30, 0.30))),
+    (-7.22, -5.52,  2.80,  4.06, 4.10, (0.26, 0.55),  (0.05, 0.07), 0.95, ()),
+    (-7.30, -6.02,  4.28,  5.85, 2.62, None,          (0.06, 0.09), 0.0,
+        ((0.45, 0.50, 0.34, 0.36, 0.26),)),
+]
 bm = bmesh.new()
-box(bm, (0.10, 26.0, 15.0), loc=(-12.0, 1.0, 4.0))
+for (x0, x1, y0, y1, zt, sb, cp, ms, pl) in NEAR:
+    tower(bm, x0, x1, y0, y1, zt, -1.40, setback=sb, cap=cp, mast=ms, plant=pl)
+mk(bm, "City_Near", MAT["city_n"], C["Skyline"], "Skyline")
+
+bm = bmesh.new()                                 # glazing bands on the near band only
+for (x0, x1, y0, y1, zt, sb, cp, ms, pl) in NEAR:
+    z = zt - 0.42
+    while z > -0.30:
+        box(bm, (x1-x0+0.016, y1-y0-0.30, 0.16), loc=((x0+x1)/2, (y0+y1)/2, z))
+        z -= 0.46
+mk(bm, "City_Glazing", MAT["city_g"], C["Skyline"], "Skyline")
+
+def band(name, material, seed, xs, ys, depth, hmin, hmax, wmin, wmax, zbase, plant_odds=0.0):
+    random.seed(seed)
+    bm = bmesh.new(); y = ys[0]
+    while y < ys[1]:
+        w = random.uniform(wmin, wmax)
+        d = random.uniform(*depth)
+        x0 = random.uniform(*xs)
+        zt = random.uniform(hmin, hmax)
+        sb = (random.uniform(0.10, 0.30), random.uniform(0.25, 0.70)) if random.random() < 0.45 else None
+        pl = ()
+        if random.random() < plant_odds:
+            pl = ((0.4, 0.45, 0.26, 0.26, 0.24),)
+        tower(bm, x0, x0 + d, y, y + w, zt, zbase, bev=0.02,
+              setback=sb, cap=(0.05, 0.08), plant=pl,
+              mast=random.uniform(0.5, 1.1) if random.random() < 0.18 else 0.0)
+        y += w + random.uniform(0.22, 0.95)
+    return mk(bm, name, material, C["Skyline"], "Skyline")
+
+band("City_Mid",  MAT["city_m"], 21, (-11.2, -9.0), (-4.8, 10.0), (1.5, 2.6),
+     2.7, 5.0, 0.9, 2.2, -2.10, plant_odds=0.35)
+band("City_Far",  MAT["city_f"], 37, (-17.0, -13.4), (-7.4, 16.2), (2.0, 3.4),
+     3.6, 6.9, 1.3, 3.1, -4.40)
+band("City_Haze", MAT["city_h"], 53, (-23.4, -19.8), (-11.5, 24.5), (2.6, 4.2),
+     4.4, 8.2, 1.8, 4.4, -7.60)
+
+bm = bmesh.new()
+box(bm, (0.10, 50.0, 28.0), loc=(-30.0, 5.0, 2.0))
 mk(bm, "Sky_Card", MAT["sky"], C["Skyline"], "Skyline")
 
 # ---------------------------------------------------------------- desk

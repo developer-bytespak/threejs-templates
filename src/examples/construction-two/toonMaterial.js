@@ -9,6 +9,7 @@ import {
   PALETTE,
   SUN_DIRECTION,
   SUN_WEIGHT,
+  TRANSLUCENT_MATERIALS,
   UNLIT_MATERIALS,
   paletteKeyOf,
 } from './palette.js'
@@ -68,6 +69,7 @@ const fragmentShader = /* glsl */ `
   uniform float uHigh;
   uniform float uSoft;
   uniform float uUnlit;
+  uniform float uOpacity;
 
   varying vec3 vWorldNormal;
 
@@ -86,7 +88,7 @@ const fragmentShader = /* glsl */ `
     vec3 colour = mix(mix(uShadow, uMid, toMid), uLit, toLit);
     colour = mix(colour, uLit, uUnlit);
 
-    gl_FragColor = vec4(colour, 1.0);
+    gl_FragColor = vec4(colour, uOpacity);
 
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -115,11 +117,20 @@ export function toonMaterialFor(materialName) {
     ? new THREE.Color(entry.mid)
     : lit.clone().lerp(shadow, 0.45)
   const [low, high] = BANDS[key] ?? DEFAULT_BANDS
+  const opacity = TRANSLUCENT_MATERIALS[key] ?? 1
 
   const material = new THREE.ShaderMaterial({
     lights: true,
     vertexShader,
     fragmentShader,
+    // Translucent surfaces join three's transparent pass, which sorts
+    // back-to-front by distance. Depth writing stays off so the pane does not
+    // punch a hole in the city behind it — the whole point is that the city is
+    // still there, tinted. `opacity` is set for three's own sorting; the shader
+    // reads uOpacity.
+    transparent: opacity < 1,
+    depthWrite: opacity >= 1,
+    opacity,
     uniforms: THREE.UniformsUtils.merge([
       THREE.UniformsLib.lights,
       {
@@ -135,6 +146,7 @@ export function toonMaterialFor(materialName) {
         uHigh: { value: high },
         uSoft: { value: BAND_SOFTNESS },
         uUnlit: { value: UNLIT_MATERIALS.has(key) ? 1 : 0 },
+        uOpacity: { value: opacity },
       },
     ]),
   })
@@ -149,6 +161,7 @@ export function toonMaterialFor(materialName) {
 
   material.name = `Toon_${key}`
   material.userData.toon = true
+  material.userData.translucent = opacity < 1
   cache.set(key, material)
   return material
 }

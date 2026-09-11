@@ -134,9 +134,15 @@ export function useRoomModel() {
         if (replacement) object.material = replacement
       }
 
+      // A pane you can see through cannot also stop the sun. Shadow casting is
+      // all-or-nothing per object, so a translucent surface left casting would
+      // throw a fully opaque shadow and take out the wedge of window light that
+      // the whole room is lit by.
+      const seeThrough = object.material?.userData?.translucent === true
       const participates = !UNSHADOWED_GROUPS.has(group)
-      object.castShadow = participates && !SHADOW_RECEIVERS_ONLY.has(group)
-      object.receiveShadow = participates
+      object.castShadow =
+        participates && !seeThrough && !SHADOW_RECEIVERS_ONLY.has(group)
+      object.receiveShadow = participates && !seeThrough
       object.frustumCulled = true
     })
 

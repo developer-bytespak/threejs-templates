@@ -42,18 +42,49 @@ export const PALETTE = {
   // planting
   mat_plant:          { lit: '#6A7A5D', mid: '#4F5D45', shadow: '#374030' },
   mat_soil:           { lit: '#544B42', mid: '#413A33', shadow: '#2E2924' },
-  // outside the glass — unshaded, atmospheric perspective does the work
-  mat_city_near:      { lit: '#93A0AA', mid: '#93A0AA', shadow: '#93A0AA' },
-  mat_city_far:       { lit: '#BAC5CD', mid: '#BAC5CD', shadow: '#BAC5CD' },
+  // outside the glass — unshaded. In a flat palette distance is carried by
+  // value alone, so the four city bands step evenly toward the sky: the near
+  // block is the darkest thing out there, the haze band is nearly the sky.
+  mat_city_glass:     { lit: '#5C6974', mid: '#5C6974', shadow: '#5C6974' },
+  mat_city_near:      { lit: '#8795A1', mid: '#8795A1', shadow: '#8795A1' },
+  mat_city_mid:       { lit: '#9DAAB4', mid: '#9DAAB4', shadow: '#9DAAB4' },
+  mat_city_far:       { lit: '#B5C1CA', mid: '#B5C1CA', shadow: '#B5C1CA' },
+  mat_city_haze:      { lit: '#C8D1D8', mid: '#C8D1D8', shadow: '#C8D1D8' },
   mat_sky:            { lit: '#DCE4E8', mid: '#DCE4E8', shadow: '#DCE4E8' },
+  // the reflection raking across the pane
+  mat_glass_sheen:    { lit: '#EAF1F6', mid: '#EAF1F6', shadow: '#EAF1F6' },
   // the lamp's glowing disc
   mat_emissive_warm:  { lit: '#FFE0B0', mid: '#FFE0B0', shadow: '#FFE0B0' },
 }
 
 /** Materials that ignore lighting entirely. */
 export const UNLIT_MATERIALS = new Set([
-  'mat_sky', 'mat_city_far', 'mat_city_near', 'mat_emissive_warm',
+  'mat_sky', 'mat_city_haze', 'mat_city_far', 'mat_city_mid', 'mat_city_near',
+  'mat_city_glass', 'mat_glass_sheen', 'mat_emissive_warm',
 ])
+
+/**
+ * Surfaces you can see through, and how solid each one is.
+ *
+ * The window is a sealed pane, not an opening: at 0.30 the toon shader tints
+ * the city behind it instead of replacing it, which is the difference between
+ * glass and a hole in the wall. The sheen is the pair of raking reflections on
+ * that pane — translucency alone reads as a tinted hole, and a reflection is
+ * what says there is a surface there.
+ *
+ * These render in three's transparent pass with depth writing off, so they
+ * blend over whatever is already in the depth buffer and sort back-to-front by
+ * distance. The sheen sits a few millimetres roomward of the pane, which is
+ * enough to put it after the glass in that sort every time.
+ *
+ * Deliberately NOT listed: mat_frosted_glass. The model's frosted volumes are
+ * thirteen overlapping boxes assembling on top of each other, and per-pixel
+ * sorting between them costs more than it buys. They stay opaque.
+ */
+export const TRANSLUCENT_MATERIALS = {
+  mat_glass: 0.30,
+  mat_glass_sheen: 0.14,
+}
 
 /**
  * Where each material crosses from one band to the next, measured against the
@@ -76,6 +107,12 @@ export const BANDS = {
   mat_model_white:   [0.20, 0.48],   // the model sits in the desk's shaded half
   mat_model_card:    [0.20, 0.48],
   mat_frosted_glass: [0.18, 0.46],
+  // The pane faces into the room, away from the sun, so on the default bands it
+  // resolved to its own shadow tone and tinted the city DARKER — glass that
+  // dims the view reads as smoked perspex. Dropped low enough that the fill
+  // alone carries it into `lit`, so the pane lifts and cools what is behind it
+  // the way glass catching sky actually does.
+  mat_glass:         [0.12, 0.22],
   mat_skin:          [0.20, 0.50],
   mat_clothing_light:[0.22, 0.52],
   mat_hair:          [0.26, 0.60],

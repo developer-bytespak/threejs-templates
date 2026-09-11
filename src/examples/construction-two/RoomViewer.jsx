@@ -152,16 +152,6 @@ function RoomViewer({ hostRef = null, standalone = false }) {
     [hostRef],
   )
 
-  const jumpToChapter = useCallback(
-    (target) => {
-      // Land a little inside the chapter rather than exactly on its seam, so
-      // the mode has actually changed by the time the scroll settles.
-      const p = target.from + (target.to - target.from) * 0.18
-      scrollToProgress(p, reducedMotion ? 'auto' : 'smooth')
-    },
-    [reducedMotion, scrollToProgress],
-  )
-
   // Deep links into a chapter, for the standalone build only. On the full page
   // the hash belongs to the page's own sections.
   useLayoutEffect(() => {
@@ -274,12 +264,7 @@ function RoomViewer({ hostRef = null, standalone = false }) {
           reducedMotion={reducedMotion}
         />
 
-        <ConstructionProgress active={chapter} onJump={jumpToChapter} />
-
-        <div className="hint" data-visible={progress < 0.02}>
-          <span>Scroll</span>
-          <i />
-        </div>
+        <ConstructionProgress active={chapter} progress={progress} />
       </div>
 
       <LoadingOverlay />

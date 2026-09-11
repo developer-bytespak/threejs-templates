@@ -449,9 +449,13 @@
   pointer-events: auto;
 }
 
+/* The category row sat 22px under a 2.6rem headline, which read as one block
+   of type rather than a heading and its index. The rule now sits a clear
+   interval below the last descender and the actions get the same interval
+   again, so the closing frame is three things rather than one. */
 .sectors {
-  margin: 22px 0 20px;
-  padding: 14px 0 0;
+  margin: clamp(30px, 4.2vh, 48px) 0 clamp(26px, 3.4vh, 38px);
+  padding: 16px 0 0;
   border-top: 1px solid rgba(242, 244, 248, 0.18);
   list-style: none;
   display: flex;
@@ -487,105 +491,62 @@
   border-bottom-color: var(--blue);
 }
 
-/* ---------------------------------------------------------------- rail */
-.rail {
+/* ---------------------------------------------------------------- misc */
+/* Where you are in the film. One line at the foot of the frame: the chapter,
+   the count, and a hairline that fills. It replaces a six-tick vertical rail
+   that occupied a whole column of the composition to say the same thing. */
+.chapmark {
   position: absolute;
-  right: clamp(16px, 2.6vw, 34px);
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 16px;
-  pointer-events: auto;
-}
-
-.rail__tick {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 0;
-  border: 0;
-  background: none;
-  color: var(--ink);
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.rail__tick i {
-  display: block;
-  width: 14px;
-  height: 1px;
-  background: rgba(242, 244, 248, 0.34);
-  transition: width 0.6s cubic-bezier(0.16, 0.84, 0.24, 1), background 0.4s ease;
-}
-
-.rail__tick:hover i,
-.rail__tick:focus-visible i {
-  background: rgba(242, 244, 248, 0.75);
-}
-
-.rail__tick[data-active='true'] i {
-  width: 30px;
-  background: var(--ink);
-}
-
-.rail__label {
-  order: -1;
-  font-size: 0.5625rem;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
+  right: clamp(16px, 4.4vw, 84px);
+  bottom: clamp(26px, 5vh, 52px);
+  width: min(300px, 38vw);
+  display: grid;
+  gap: 9px;
   opacity: 0;
-  transform: translateX(6px);
-  transition: opacity 0.4s ease, transform 0.4s ease;
+  transform: translateY(6px);
+  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.16, 0.84, 0.24, 1);
+  pointer-events: none;
 }
 
-.rail__tick[data-active='true'] .rail__label,
-.rail__tick:hover .rail__label,
-.rail__tick:focus-visible .rail__label {
+.chapmark[data-visible='true'] {
   opacity: 1;
   transform: none;
 }
 
-.rail__tick:focus-visible {
-  outline: 1px solid var(--blue);
-  outline-offset: 6px;
-}
-
-/* ---------------------------------------------------------------- misc */
-.hint {
-  position: absolute;
-  left: 50%;
-  bottom: 30px;
-  translate: -50% 0;
+.chapmark__row {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.625rem;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0;
+  font-size: 0.5625rem;
   letter-spacing: 0.26em;
   text-transform: uppercase;
-  color: var(--ink-faint);
-  opacity: 0;
-  transition: opacity 0.6s ease;
-  pointer-events: none;
 }
 
-.hint[data-visible='true'] { opacity: 1; }
+.chapmark__label { color: var(--ink-dim); }
 
-.hint i {
-  width: 1px;
-  height: 38px;
-  background: linear-gradient(to bottom, rgba(242, 244, 248, 0.55), transparent);
-  animation: hint-fall 2s ease-in-out infinite;
+.chapmark__count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-variant-numeric: tabular-nums;
 }
 
-@keyframes hint-fall {
-  0%   { transform: scaleY(0); transform-origin: top; }
-  50%  { transform: scaleY(1); transform-origin: top; }
-  51%  { transform: scaleY(1); transform-origin: bottom; }
-  100% { transform: scaleY(0); transform-origin: bottom; }
+.chapmark__count b { font-weight: 500; color: var(--ink); }
+.chapmark__count em { font-style: normal; color: var(--ink-faint); }
+
+.chapmark__track {
+  display: block;
+  height: 1px;
+  background: rgba(242, 244, 248, 0.18);
+}
+
+.chapmark__track i {
+  display: block;
+  height: 100%;
+  width: calc(var(--v, 0) * 100%);
+  background: var(--ink);
 }
 
 .viewer-overlay {
@@ -675,8 +636,7 @@
   .actions { gap: 1.1rem; }
   .action { font-size: 0.75rem; }
 
-  .rail { right: 10px; gap: 12px; }
-  .rail__label { display: none; }
+  .chapmark { right: 16px; left: 16px; width: auto; bottom: 22px; }
   .metaline { gap: 0.7rem; font-size: 0.5rem; letter-spacing: 0.2em; }
 }
 
@@ -693,13 +653,10 @@
   .pole,
   .phase,
   .phase__rule,
-  .rail__tick i,
-  .rail__label,
-  .hint {
+  .chapmark {
     transition-duration: 0.01ms !important;
     transform: none !important;
   }
 
   .tracing[data-on='true'] { transform: rotate(-0.7deg) !important; }
-  .hint i { animation: none; }
 }

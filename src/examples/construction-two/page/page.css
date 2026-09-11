@@ -26,7 +26,9 @@
   --dark:       #0b0d10;
   --dark-2:     #12151a;
   --on-dark:    #f1ece2;
+  --on-dark-72: rgba(241, 236, 226, 0.72);
   --on-dark-58: rgba(241, 236, 226, 0.58);
+  --on-dark-40: rgba(241, 236, 226, 0.4);
   --on-dark-30: rgba(241, 236, 226, 0.3);
   --on-dark-14: rgba(241, 236, 226, 0.14);
 
@@ -44,6 +46,22 @@
 
 .c2page main { display: block; }
 
+/* ---- what Lenis needs from the document
+   Lenis ships a stylesheet; these are the rules from it that this page
+   actually depends on, inlined so the route stays one file.
+
+   The first pair matters most: Lenis sets the document height itself, and a
+   fixed height on html or body leaves it with nothing to scroll. The third
+   turns off native smooth scrolling, which otherwise fights Lenis for the
+   same pixels and produces a visible stutter. */
+html.lenis,
+html.lenis body { height: auto; }
+
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+.lenis.lenis-stopped { overflow: hidden; }
+.lenis.lenis-smooth iframe { pointer-events: none; }
+
 .c2page ::selection { background: var(--blue); color: #fff; }
 
 .c2page :focus-visible {
@@ -53,17 +71,15 @@
 
 .c2page [data-zone='dark'] :focus-visible { outline-color: var(--accent); }
 
-.c2page h2,
-.c2page h3,
-.c2page p,
-.c2page ul,
-.c2page ol,
-.c2page dl,
-.c2page dd,
-.c2page figure { margin: 0; padding: 0; }
+/* The element reset, held at zero specificity on the element half.
+   `.c2page h2` is (0,1,1) and out-ranks a single-class rule like
+   `.c2say__label`, which means every margin and padding set by class below
+   was being silently discarded — a whole page of spacing that looked
+   deliberate and was not. `:where()` contributes nothing, so this is (0,1,0):
+   still stronger than a bare element rule, still weaker than any class. */
+.c2page :where(h2, h3, p, ul, ol, dl, dd, figure) { margin: 0; padding: 0; }
 
-.c2page ul,
-.c2page ol { list-style: none; }
+.c2page :where(ul, ol) { list-style: none; }
 
 .c2page button {
   font: inherit;
@@ -115,6 +131,16 @@
   mask-image: radial-gradient(120% 90% at 50% 40%, #000 30%, transparent 78%);
 }
 
+/* Photography, wherever it lands: the frame owns the box, the picture fills
+   it. Identical treatment for the plate fallback, so a missing file changes
+   the drawing and never the layout. */
+.c2media {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 /* Plates: the drawn stand-ins for photography. They take the surface's
    colours, so the same drawing works on paper and on charcoal. */
 .plate {
@@ -139,147 +165,159 @@
 }
 
 /* ================================================================= navbar */
+/* A title block, not a menu bar. Two blocks of small uppercase type, a single
+   hairline under them, and nothing behind any individual item — no pill, no
+   capsule, no rounded anything. The only decoration is two 1px rules: one
+   between the wordmark's halves, one holding the action apart from the links.
+
+   The bar never uses a gradient or a blur. When it needs a ground to stay
+   readable it takes a flat, slightly transparent one in the colour of whatever
+   it is over. */
 .c2nav {
   --nav-ink: var(--on-dark);
-  --nav-dim: var(--on-dark-58);
-  --nav-line: var(--on-dark-14);
+  --nav-dim: rgba(241, 236, 226, 0.62);
+  --nav-line: rgba(241, 236, 226, 0.16);
   --nav-bg: transparent;
+
+  /* The two states. Vertical padding tightens on scroll and horizontal padding
+     tightens with it — so as the bar gets shorter the wordmark and the actions
+     move further apart. Compacting and widening at the same time is what keeps
+     it from reading as the bar simply shrinking. */
+  --nav-y: clamp(21px, 2.6vw, 33px);
+  --nav-x: clamp(22px, 5.4vw, 92px);
 
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: 60;
-  display: grid;
-  grid-template-columns: auto 1fr auto auto;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: clamp(16px, 3vw, 48px);
-  padding: clamp(18px, 2.4vw, 30px) var(--gut);
+  padding: var(--nav-y) var(--nav-x);
   color: var(--nav-ink);
   background: var(--nav-bg);
   font-family: var(--sans);
   transition:
+    padding 0.62s var(--ease),
     color 0.7s var(--ease),
-    background-color 0.7s var(--ease),
-    padding 0.5s var(--ease);
+    background-color 0.55s var(--ease);
 }
 
 .c2nav[data-zone='light'] {
   --nav-ink: var(--ink);
-  --nav-dim: var(--ink-58);
-  --nav-line: var(--ink-18);
+  --nav-dim: rgba(17, 19, 23, 0.6);
+  --nav-line: rgba(17, 19, 23, 0.16);
 }
 
-/* Compacts and earns a backdrop once the page has moved. The backdrop is a
-   gradient that fades out under the bar rather than a blur: a blurred layer
-   over a full-page WebGL canvas is both the most expensive thing a fixed
-   element can do and the one effect this page has no business using. */
 .c2nav[data-scrolled='true'] {
-  padding-top: clamp(12px, 1.5vw, 18px);
-  padding-bottom: clamp(12px, 1.5vw, 18px);
+  --nav-y: clamp(12px, 1.4vw, 17px);
+  --nav-x: clamp(18px, 3.1vw, 52px);
+  --nav-bg: rgba(8, 10, 15, 0.72);
 }
 
-.c2nav::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: linear-gradient(
-    to bottom,
-    var(--nav-veil) 0%,
-    var(--nav-veil) 58%,
-    transparent 100%
-  );
-  opacity: 0;
-  transition: opacity 0.6s var(--ease);
+.c2nav[data-zone='light'][data-scrolled='true'] {
+  --nav-bg: rgba(239, 233, 222, 0.9);
 }
 
-.c2nav[data-scrolled='true']::before { opacity: 1; }
-
-.c2nav { --nav-veil: rgba(6, 8, 12, 0.82); }
-.c2nav[data-zone='light'] { --nav-veil: rgba(239, 233, 222, 0.94); }
-
+/* The divider. One hairline, full width, fading in rather than drawing across:
+   a rule that animates its own length draws attention to the scroll position
+   instead of to the page. */
 .c2nav__rule {
-  position: absolute;
-  left: var(--gut);
-  right: var(--gut);
-  bottom: 0;
-  height: 1px;
-  background: var(--nav-line);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.9s var(--ease), background-color 0.7s var(--ease);
-}
-
-.c2nav[data-scrolled='true'] .c2nav__rule { transform: scaleX(1); }
-
-.c2nav__brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  font-size: 0.6875rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-}
-
-.c2nav__mark { font-weight: 700; }
-.c2nav__name { color: var(--nav-dim); transition: color 0.7s var(--ease); }
-
-.c2nav__brand i {
-  width: 12px;
-  height: 1px;
-  background: currentColor;
-  opacity: 0.5;
-}
-
-.c2nav__links {
-  justify-self: end;
-  display: flex;
-  gap: clamp(18px, 2.2vw, 34px);
-}
-
-.c2nav__links button {
-  position: relative;
-  font-size: 0.6875rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--nav-dim);
-  transition: color 0.4s ease;
-  padding-bottom: 3px;
-}
-
-.c2nav__links button::after {
-  content: '';
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
   height: 1px;
-  background: currentColor;
-  transform: scaleX(0);
-  transform-origin: right;
-  transition: transform 0.5s var(--ease);
+  background: var(--nav-line);
+  opacity: 0;
+  transition: opacity 0.5s var(--ease), background-color 0.7s var(--ease);
+}
+
+.c2nav[data-scrolled='true'] .c2nav__rule { opacity: 1; }
+
+/* ---- left: the wordmark */
+.c2nav__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  font-size: 0.6875rem;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Bytes carries the weight; Construction is the qualifier and is set lighter
+   and dimmer so the pair reads as one lockup with a hierarchy in it. */
+.c2nav__mark {
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--nav-ink);
+}
+
+.c2nav__name {
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  color: var(--nav-dim);
+  transition: color 0.7s var(--ease);
+}
+
+.c2nav__tick {
+  width: 1px;
+  height: 11px;
+  background: var(--nav-line);
+  transition: background-color 0.7s var(--ease);
+}
+
+/* ---- right: links, a rule, the action */
+.c2nav__right {
+  display: flex;
+  align-items: center;
+  gap: clamp(15px, 1.8vw, 28px);
+}
+
+.c2nav__links {
+  display: flex;
+  gap: clamp(16px, 1.9vw, 30px);
+}
+
+/* Colour and nothing else. No underline sliding out, no scale, no lift —
+   at this size any of those is louder than the label itself. */
+.c2nav__links button {
+  font-size: 0.6875rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--nav-dim);
+  transition: color 0.35s ease;
 }
 
 .c2nav__links button:hover,
 .c2nav__links button:focus-visible { color: var(--nav-ink); }
 
-.c2nav__links button:hover::after,
-.c2nav__links button:focus-visible::after {
-  transform: scaleX(1);
-  transform-origin: left;
+.c2nav__sep {
+  width: 1px;
+  height: 11px;
+  background: var(--nav-line);
+  transition: background-color 0.7s var(--ease);
 }
 
+/* The one item at full strength. It earns its emphasis from weight and colour
+   rather than from a box — a line of type with an arrow, which is as far as
+   this page goes toward a button. */
 .c2nav__cta {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   font-size: 0.6875rem;
-  letter-spacing: 0.16em;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
-  padding: 9px 0 9px 18px;
-  border-left: 1px solid var(--nav-line);
-  transition: border-color 0.7s var(--ease);
+  color: var(--nav-ink);
+  white-space: nowrap;
 }
 
 .c2nav__cta i {
@@ -433,12 +471,47 @@
   visibility: hidden;
 }
 
+/* ---- the veil over the room
+   The studio renders bright — lit plaster, a pale sheet, a window full of sky —
+   and the whole interface sits on top of it, so the type was competing with the
+   scene rather than sitting in front of it.
+
+   This is a layer, not a colour change: a flat charcoal-navy wash across the
+   canvas with a little more weight across the top band where the bar and the
+   headline land. The toon palette, the materials and the shader are untouched,
+   so the room, the desk, the window and the board all still read — they just
+   recede far enough for the page to come forward. Nothing goes near black; the
+   flat wash is 28%, and the heaviest point, the very top edge of the frame, is
+   about 58% once the two are composited.
+
+   It sits above the canvas and below every piece of interface, which is what
+   the four z-indexes below are for. The scene's own vignette stays above it and
+   keeps doing its separate job at the frame edges. */
+.c2page .stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(6, 9, 16, 0.4) 0%,
+      rgba(6, 9, 16, 0.16) 20%,
+      rgba(6, 9, 16, 0) 38%
+    ),
+    rgba(9, 12, 20, 0.28);
+}
+
+.c2page .vignette { z-index: 2; }
+.c2page .story { z-index: 3; }
+.c2page .chapmark { z-index: 4; }
+
 /* The film lifts off before the paper arrives: the copy resolves, clears,
    and only then does the surface change. A wipe over live type would read
    as an accident. */
 .c2page .c2hero .story,
-.c2page .c2hero .rail,
-.c2page .c2hero .hint {
+.c2page .c2hero .chapmark {
   --lift: clamp(0, calc((var(--p, 0) - 0.9) / 0.045), 1);
   opacity: calc(1 - var(--lift));
   transform: translateY(calc(var(--lift) * -18px));
@@ -489,11 +562,34 @@
 }
 
 /* ========================================================= selected work */
+/* Four projects through one frame. The text column is fixed and the
+   photograph does the travelling — which is how a printed portfolio behaves,
+   and which also makes a collision between two project titles impossible.
+
+   Each project's own 0..1 arrives as `--t` on the scroll tick. Everything
+   below is a clamp of it:
+
+     --in    0 → 1 as the project arrives. Project 01 is pinned at 1: the
+             section opens on a finished composition, never on a stage
+             waiting to begin.
+     --grow  0 → 1 across the project's own slot. The frame widens and the
+             image counter-scales inside it, so the crop opens rather than the
+             picture growing.
+     --out   0 → 1 as it hands over, overlapping the next project's --in.
+
+   The overlap is the point: for a third of a slot both photographs are on
+   screen and moving. Nothing fades out and waits. */
 .c2work {
   position: relative;
   z-index: 2;
-  height: calc((var(--count) + 0.7) * 100vh);
+  height: calc((var(--count) * 0.92 + 0.45) * 100vh);
   background: var(--paper);
+  /* The text column, named once. The frame's maximum width is derived from
+     it, so the two can never be given inconsistent values — and it is set in
+     vw rather than ch because a ch here is measured against the column's own
+     16px body size, not the 48px display size of the project name, which is
+     how a two-word title ends up wrapping inside a mask. */
+  --textw: clamp(250px, 27vw, 520px);
 }
 
 .c2work__pin {
@@ -506,7 +602,7 @@
 
 .c2work__head {
   position: absolute;
-  top: clamp(88px, 13vh, 148px);
+  top: clamp(92px, 13vh, 150px);
   left: var(--gut);
   right: var(--gut);
   display: grid;
@@ -529,172 +625,205 @@
   gap: 6px;
   font-size: 0.625rem;
   letter-spacing: 0.2em;
+  font-variant-numeric: tabular-nums;
 }
 
-.c2work__count b { font-weight: 500; color: var(--ink); }
-.c2work__count span { color: var(--ink-38); }
+.c2work__count em { font-style: normal; color: var(--ink-38); }
+
+/* The index slides rather than switches: a masked column of numerals moved by
+   the same continuous value that drives the stage. */
+.c2work__odometer {
+  display: block;
+  height: 1em;
+  overflow: hidden;
+}
+
+.c2work__odometer > span {
+  display: block;
+  transform: translateY(calc(var(--i, 0) * -1em));
+  transition: transform 0.7s var(--ease);
+}
+
+.c2work__odometer b {
+  display: block;
+  height: 1em;
+  line-height: 1;
+  font-weight: 500;
+}
 
 .c2work__stage { position: absolute; inset: 0; }
 
 .c2work__item {
   position: absolute;
   inset: 0;
-  /* enter, then hold, then hand over */
-  --in: clamp(0, calc((var(--t, -1) + 0.34) / 0.34), 1);
-  --out: clamp(0, calc((var(--t, -1) - 0.72) / 0.28), 1);
+  --in: clamp(0, calc((var(--t, -2) + var(--enter)) / var(--enter)), 1);
+  --out: clamp(0, calc((var(--t, -2) - var(--exit)) / (1 - var(--exit))), 1);
+  --grow: clamp(0, var(--t, -2), 1);
   --live: calc(var(--in) - var(--out));
 }
 
-.c2work__frame {
-  isolation: isolate;
+/* Project 01 is already there. It has no entrance at all, because the top of
+   this section is not a beginning — the hero has just handed the page over,
+   and a masked title over a half-wiped frame at that moment reads as a page
+   that has not finished loading rather than as a reveal. Its motion is
+   `--grow`: the crop opens under the reader, and then it hands over like the
+   rest. */
+.c2work__item[data-first='true'] { --in: 1; }
+
+/* ---- the text column: fixed in place, clipping over between projects */
+.c2work__text {
   position: absolute;
-  left: var(--fx);
-  top: var(--fy);
-  width: var(--fw);
-  height: var(--fh);
+  left: var(--gut);
+  top: 50%;
+  translate: 0 -50%;
+  width: var(--textw);
+  z-index: 2;
+}
+
+/* Both are masked, so the box is opened under the baseline and the space is
+   taken back with a negative margin — otherwise the mask crops a descender
+   the moment a project is renamed. */
+.c2work__sector,
+.c2work__name {
   overflow: hidden;
-  transform:
-    translate3d(calc(var(--out) * var(--drift)), calc(var(--out) * -3vh), 0)
-    scale(calc(1 - var(--out) * 0.05));
-  opacity: clamp(0, calc((1 - var(--out)) * 3), 1);
+  padding-bottom: 0.12em;
+}
+
+.c2work__sector span,
+.c2work__name span {
+  display: block;
+  transform: translateY(calc((1 - var(--in)) * 115% + var(--out) * -115%));
+}
+
+.c2work__sector {
+  font-size: 0.625rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--blue);
+  margin-bottom: calc(14px - 0.12em);
+}
+
+.c2work__name {
+  font-size: clamp(1.6rem, 3.2vw, 3.4rem);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin-bottom: calc(22px - 0.12em);
+}
+
+/* A spec line, not a table: each value sits at the end of its own measure so
+   the three align into a column without needing a rule. Capped well inside
+   the text column — across the full 440px the pairs read as two unrelated
+   lists rather than as three rows. */
+.c2work__meta {
+  display: grid;
+  gap: 8px;
+  max-width: 300px;
+  opacity: var(--live);
+}
+
+.c2work__meta div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 0.6875rem;
+  transform: translateY(calc((1 - var(--in)) * 14px));
+}
+
+.c2work__meta div:nth-child(2) { transform: translateY(calc((1 - var(--in)) * 22px)); }
+.c2work__meta div:nth-child(3) { transform: translateY(calc((1 - var(--in)) * 30px)); }
+
+.c2work__meta dt {
+  font-size: 0.5625rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-38);
+}
+
+.c2work__meta dd { color: var(--ink-72); margin: 0; }
+
+.c2work__underline {
+  display: block;
+  height: 1px;
+  margin: 20px 0 16px;
+  background: var(--ink-18);
+  width: calc((0.3 + var(--grow) * 0.7) * 100%);
+  opacity: var(--live);
+}
+
+.c2work__note {
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: var(--ink-58);
+  opacity: calc(var(--live) * clamp(0, calc(var(--in) * 2 - 1), 1));
+}
+
+/* ---- the frame: a crop that opens */
+.c2work__frame {
+  position: absolute;
+  right: var(--gut);
+  top: 19vh;
+  height: 58vh;
+  width: calc((40 + var(--grow) * 12) * 1vw);
+  max-width: calc(100vw - var(--gut) * 2 - var(--textw) - 4vw);
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--paper-3);
+  transform: translate3d(calc(var(--out) * 4vw), calc(var(--out) * -3vh), 0);
+}
+
+/* The grammar is one wipe; only the axis changes, so four projects read as
+   one section rather than four experiments.
+
+   Every one of them is closed at both ends — fully shut at --in 0 and fully
+   shut again at --out 1. That is not decoration: the items are stacked, so a
+   wipe that only reaches, say, inset(70% 0 0 40%) at rest leaves a band of
+   the third project sitting under the second for a third of the section. */
+.c2work__item[data-move='up'] .c2work__frame {
+  clip-path: inset(calc((1 - var(--in)) * 100%) 0 calc(var(--out) * 100%) 0);
+}
+
+.c2work__item[data-move='right'] .c2work__frame {
+  clip-path: inset(0 calc(var(--out) * 100%) 0 calc((1 - var(--in)) * 100%));
+}
+
+/* A corner rather than an edge: top and left close together, so it opens on
+   the diagonal and still reaches nothing at either end. */
+.c2work__item[data-move='diag'] .c2work__frame {
+  clip-path: inset(
+    calc((1 - var(--in)) * 100%) 0 0
+    calc((1 - var(--in)) * 100% + var(--out) * 100%)
+  );
 }
 
 .c2work__media {
   position: absolute;
   inset: 0;
-  transform: scale(calc(1.07 - var(--in) * 0.07));
-  transition: transform 0.7s var(--ease);
+  /* Counter-scale: as the crop opens the picture settles back, so the frame
+     widens onto more of the photograph instead of magnifying it. */
+  transform: scale(calc(1.14 - var(--grow) * 0.14));
 }
 
-.c2work__media img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
+.c2work__media .plate { width: 100%; height: 100%; }
 
-/* Each project takes the frame in its own direction. The grammar is one
-   wipe; the axis is what changes. */
-.c2work__item[data-wipe='up'] .c2work__frame    { clip-path: inset(calc((1 - var(--in)) * 100%) 0 0 0); }
-.c2work__item[data-wipe='right'] .c2work__frame { clip-path: inset(0 calc((1 - var(--in)) * 100%) 0 0); }
-.c2work__item[data-wipe='left'] .c2work__frame  { clip-path: inset(0 0 0 calc((1 - var(--in)) * 100%)); }
-
-/* Hairlines that run out along the frame as it arrives — a drawn edge
-   rather than a border. */
-.c2work__edge {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: var(--ink-38);
-  transform: scaleX(var(--in));
-}
-
-.c2work__edge--t { top: 0; transform-origin: left; }
-.c2work__edge--b { bottom: 0; transform-origin: right; }
-
-/* A plain chip. This was a mix-blend-mode for a while, which is a very
-   expensive way to save one colour: a blended element blends against its whole
-   stacking context, and the nearest one here is the page — twenty-six thousand
-   pixels of it, canvas included. The compositor gave up and took the document
-   with it. */
-.c2work__view {
-  position: absolute;
-  right: 12px;
-  bottom: 10px;
-  padding: 5px 9px;
-  font-size: 0.5625rem;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--paper);
-  background: rgba(17, 19, 23, 0.86);
-  opacity: 0;
-  transform: translateY(6px);
-  transition: opacity 0.4s ease, transform 0.5s var(--ease);
-}
-
-@media (hover: hover) {
-  .c2work__frame:hover .c2work__media { transform: scale(1.04); }
-  .c2work__frame:hover .c2work__view { opacity: 1; transform: none; }
-  .c2work__frame:hover ~ .c2work__meta .c2work__note { opacity: 1; transform: none; }
-}
-
-.c2work__sector {
-  position: absolute;
-  font-size: clamp(0.75rem, 1.5vw, 1.0625rem);
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--ink-38);
-  opacity: var(--live);
-  transform: translateY(calc((1 - var(--in)) * 14px));
-}
-
-.c2work__item[data-sector='tl'] .c2work__sector { left: var(--gut); top: 25vh; }
-.c2work__item[data-sector='tr'] .c2work__sector { right: var(--gut); top: 25vh; }
-.c2work__item[data-sector='bl'] .c2work__sector { left: var(--gut); bottom: 16vh; }
-.c2work__item[data-sector='br'] .c2work__sector { right: var(--gut); bottom: 16vh; }
-
-.c2work__meta {
-  position: absolute;
-  width: min(24ch, 22vw);
-  opacity: var(--live);
-  transform: translateY(calc((1 - var(--in)) * 22px));
-}
-
-.c2work__item[data-meta='bl'] .c2work__meta { left: var(--gut); bottom: 14vh; }
-.c2work__item[data-meta='tl'] .c2work__meta { left: var(--gut); top: 30vh; }
-.c2work__item[data-meta='br'] .c2work__meta { right: var(--gut); bottom: 14vh; text-align: right; }
-.c2work__item[data-meta='tr'] .c2work__meta { right: var(--gut); top: 30vh; text-align: right; }
-
-.c2work__meta h3 {
-  font-size: clamp(1.5rem, 3.1vw, 2.6rem);
-  font-weight: 500;
-  letter-spacing: -0.035em;
-  line-height: 1;
-  margin-bottom: 18px;
-}
-
-.c2work__meta dl {
-  display: grid;
-  gap: 7px;
-  border-top: 1px solid var(--ink-18);
-  padding-top: 12px;
-}
-
-.c2work__meta dl div {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 0.6875rem;
-  letter-spacing: 0.06em;
-}
-
-.c2work__item[data-meta='br'] .c2work__meta dl div,
-.c2work__item[data-meta='tr'] .c2work__meta dl div { flex-direction: row-reverse; }
-
-.c2work__meta dt { color: var(--ink-38); text-transform: uppercase; letter-spacing: 0.16em; font-size: 0.5625rem; }
-.c2work__meta dd { color: var(--ink-72); }
-
-.c2work__note {
-  margin-top: 14px;
-  font-size: 0.75rem;
-  line-height: 1.55;
-  color: var(--ink-58);
-  opacity: 0;
-  transform: translateY(6px);
-  transition: opacity 0.5s ease, transform 0.6s var(--ease);
-}
-
-/* The frame's baseline outlives the section: it extends to full width as
-   the last project clears, and the numbers below are set against it. */
-.c2work__seam {
+.c2work__ticks {
   position: absolute;
   left: var(--gut);
-  bottom: 12vh;
-  height: 1px;
-  background: var(--ink-18);
-  width: calc(clamp(0, calc((var(--p, 0) - 0.86) / 0.14), 1) * (100% - var(--gut) * 2));
+  bottom: clamp(30px, 6vh, 64px);
+  display: flex;
+  gap: 7px;
+  z-index: 4;
 }
+
+.c2work__ticks i {
+  width: 30px;
+  height: 2px;
+  background: var(--ink-18);
+  transition: background-color 0.5s ease;
+}
+
+.c2work__ticks i[data-state='done'] { background: var(--ink-38); }
+.c2work__ticks i[data-state='on'] { background: var(--ink); }
 
 .c2work__index {
   position: absolute;
@@ -705,6 +834,24 @@
 }
 
 /* ================================================================= stats */
+/* Four figures at four sizes on four baselines, and one accent that the
+   cursor can pick up and carry.
+
+   The scroll behaviour is unchanged: each figure is drawn as an outline and
+   filled by a sweep travelling up through the glyphs, with a dimension string
+   extending underneath it.
+
+   What the pointer adds is deliberately one idea, not four. A single blue
+   lives in the section; at rest it sits on the third figure, and hovering any
+   other figure transfers it — the blue moves, nothing lights up. Around that,
+   each figure leans a few pixels toward the cursor and its measurement rule
+   runs out a little further as the cursor moves right, both damped in JS and
+   written to the node as custom properties. The figures that are not holding
+   the accent step back slightly, so the section always has one subject.
+
+   None of it exists on a touch device: usePointerField never starts there, so
+   --mx/--my/--near stay 0 and every expression below resolves to its resting
+   value. */
 .c2stats {
   position: relative;
   z-index: 2;
@@ -728,8 +875,6 @@
   color: var(--ink-38);
 }
 
-/* Four figures at four sizes on four baselines. A row of equal numbers is
-   a scoreboard; this is a drawing sheet. */
 .c2stats__grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
@@ -739,7 +884,17 @@
 
 .c2stat {
   --r: clamp(0, calc((var(--p, 0) - 0.1 - var(--i) * 0.055) / 0.2), 1);
+  --mx: 0;
+  --my: 0;
+  --near: 0;
   position: relative;
+  /* Four to ten pixels. Enough to feel answered, not enough to be a toy. */
+  transform: translate3d(
+    calc(var(--mx) * var(--near) * 7px),
+    calc(var(--my) * var(--near) * 4px),
+    0
+  );
+  will-change: transform;
 }
 
 .c2stat:nth-child(1) { grid-column: 1 / span 5; }
@@ -767,26 +922,43 @@
   inset: 0;
   color: transparent;
   -webkit-text-stroke: 1px var(--ink-38);
+  transition: opacity 0.5s ease;
 }
 
 .c2stat__fill {
   position: relative;
   display: block;
   clip-path: inset(calc((1 - var(--r)) * 104%) 0 0 0);
+  transition: color 0.45s ease;
 }
 
-.c2stat:nth-child(3) .c2stat__fill { color: var(--blue); }
+/* One accent, transferred rather than multiplied. */
+.c2stat[data-accent='true'] .c2stat__fill { color: var(--blue); }
 
-/* A dimension string rather than a divider: it grows to length and carries
-   a witness tick at each end, and the right-hand tick travels with it. */
+/* While the cursor is in the section the figures it is not on step back, so
+   there is always exactly one subject. */
+.c2stats[data-hovering='true'] .c2stat:not([data-accent='true']) .c2stat__fill {
+  color: var(--ink-72);
+}
+
+.c2stats[data-hovering='true'] .c2stat:not([data-accent='true']) .c2stat__outline {
+  opacity: 0.5;
+}
+
+/* A dimension string rather than a divider: it grows to length, carries a
+   witness tick at each end, and runs out a little further under the cursor —
+   which is what a measurement does when you look closer at it. */
 .c2stat__rule {
   position: relative;
   display: block;
   height: 1px;
-  width: calc(var(--r) * 100%);
+  width: calc(var(--r) * (100% + var(--mx) * var(--near) * 4%));
   margin: 20px 0 14px;
   background: var(--ink);
+  transition: background-color 0.45s ease;
 }
+
+.c2stat[data-accent='true'] .c2stat__rule { background: var(--blue); }
 
 .c2stat__rule::before,
 .c2stat__rule::after {
@@ -795,7 +967,7 @@
   top: -4px;
   width: 1px;
   height: 9px;
-  background: var(--ink);
+  background: inherit;
 }
 
 .c2stat__rule::before { left: 0; }
@@ -814,195 +986,10 @@
   font-size: 0.6875rem;
   color: var(--ink-38);
   opacity: calc(var(--r) * 0.9);
+  transition: color 0.45s ease;
 }
 
-/* ========================================================== capabilities */
-.c2cap {
-  position: relative;
-  z-index: 2;
-  height: calc((var(--count) + 0.55) * 100vh);
-  background: var(--paper-2);
-  border-top: 1px solid var(--ink-18);
-}
-
-.c2cap__pin {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  height: 100svh;
-  overflow: hidden;
-}
-
-.c2cap__head {
-  position: absolute;
-  top: clamp(88px, 13vh, 148px);
-  left: var(--gut);
-  right: var(--gut);
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  z-index: 4;
-}
-
-.c2cap__of {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  font-size: 0.625rem;
-  letter-spacing: 0.2em;
-}
-
-.c2cap__of b { font-weight: 500; }
-.c2cap__of span { color: var(--ink-38); }
-
-.c2cap__stage { position: absolute; inset: 0; }
-
-.c2cap__item {
-  position: absolute;
-  inset: 0;
-  --in: clamp(0, calc((var(--t, -1) + 0.3) / 0.3), 1);
-  --out: clamp(0, calc((var(--t, -1) - 0.74) / 0.26), 1);
-  --live: calc(var(--in) - var(--out));
-  display: grid;
-  grid-template-columns: minmax(0, 0.44fr) minmax(0, 0.56fr);
-  align-items: center;
-  gap: clamp(24px, 4vw, 72px);
-  padding: 0 var(--gut);
-}
-
-/* The number is pinned: it is the one thing that does not move, which is what
-   makes everything else look like it is being rebuilt around it. It is drawn
-   as an outline and sits *behind* the headline rather than beside it — set
-   beside it, at this size, it either collides with the copy or squeezes the
-   column down to nothing. */
-.c2cap__index {
-  position: absolute;
-  left: calc(var(--gut) - 0.06em);
-  top: 50%;
-  translate: 0 -50%;
-  z-index: 0;
-  font-size: clamp(6rem, 20vw, 17rem);
-  font-weight: 500;
-  letter-spacing: -0.06em;
-  line-height: 0.8;
-  color: transparent;
-  -webkit-text-stroke: 1px var(--ink-18);
-  clip-path: inset(calc((1 - var(--in)) * 100%) 0 calc(var(--out) * 100%) 0);
-}
-
-.c2cap__body {
-  grid-column: 1;
-  position: relative;
-  z-index: 2;
-  padding-left: clamp(0px, 3.5vw, 56px);
-  align-self: center;
-}
-
-.c2cap__headline {
-  font-size: clamp(1.7rem, 4vw, 3.4rem);
-  font-weight: 500;
-  letter-spacing: -0.04em;
-  line-height: 1.02;
-  margin-bottom: 22px;
-}
-
-.c2cap__headline span {
-  display: block;
-  overflow: hidden;
-}
-
-.c2cap__headline b {
-  display: block;
-  font-weight: inherit;
-  transform: translate3d(calc((1 - var(--in)) * 42px + var(--out) * -30px), 0, 0);
-  opacity: var(--live);
-  transition: none;
-}
-
-.c2cap__headline span:nth-child(2) b {
-  transform: translate3d(calc((1 - var(--in)) * 64px + var(--out) * -30px), 0, 0);
-}
-
-.c2cap__discipline {
-  font-size: 0.6875rem;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--blue);
-  opacity: var(--live);
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--ink-18);
-}
-
-.c2cap__terms {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 22px;
-  margin-top: 16px;
-}
-
-.c2cap__terms li {
-  font-size: 0.8125rem;
-  letter-spacing: 0.04em;
-  color: var(--ink-72);
-  opacity: var(--live);
-  transform: translateY(calc((1 - var(--in)) * 16px));
-}
-
-/* Each term lands slightly after the one before it — without a transition,
-   because the scroll position is the clock. */
-.c2cap__terms li:nth-child(2) { transform: translateY(calc((1 - var(--in)) * 24px)); }
-.c2cap__terms li:nth-child(3) { transform: translateY(calc((1 - var(--in)) * 32px)); }
-.c2cap__terms li:nth-child(4) { transform: translateY(calc((1 - var(--in)) * 40px)); }
-
-.c2cap__note {
-  margin-top: 24px;
-  max-width: 34ch;
-  font-size: 0.8125rem;
-  line-height: 1.6;
-  color: var(--ink-58);
-  opacity: calc(var(--live) * 0.95);
-}
-
-.c2cap__view {
-  grid-column: 2;
-  position: relative;
-  height: min(56vh, 460px);
-  overflow: hidden;
-  /* Cropped horizontally out and back in: one viewport being re-aimed. */
-  clip-path: inset(0 calc(var(--out) * 100%) 0 calc((1 - var(--in)) * 100%));
-}
-
-.c2cap__view .plate {
-  transform: scale(calc(1.06 - var(--in) * 0.06));
-}
-
-.c2cap__view i {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 100%;
-  height: 1px;
-  background: var(--accent);
-  transform: scaleX(var(--in));
-  transform-origin: left;
-}
-
-.c2cap__ticks {
-  position: absolute;
-  left: var(--gut);
-  bottom: clamp(34px, 7vh, 72px);
-  display: flex;
-  gap: 8px;
-}
-
-.c2cap__ticks i {
-  width: 34px;
-  height: 2px;
-  background: var(--ink-18);
-  transition: background-color 0.5s ease;
-}
-
-.c2cap__ticks i[data-on='true'] { background: var(--ink); }
+.c2stat[data-accent='true'] .c2stat__note { color: var(--ink-58); }
 
 /* ============================================================ film strip */
 .c2film {
@@ -1099,86 +1086,132 @@
 }
 
 /* =============================================================== process */
+/* One route across a pinned stage: landing, drop, landing, drop.
+
+   The line is seven measured segments rather than one dashed SVG path. The
+   stage is read as percentages, which means non-uniform scale, and a dash
+   pattern under non-uniform scale with a non-scaling stroke comes apart into
+   disconnected pieces. Each segment instead owns its slice of the route's
+   length — `--a` where it starts, `--l` how long it is — and scales from the
+   end the line arrives at, so the route plots in order and lands exactly.
+
+   Every block sits on top of its own landing, the way an annotation sits over
+   a dimension line, so the route passes under its text and never through it.
+   Consecutive landings step sideways as well as down, so no two blocks share
+   both a column and a neighbouring band. Collision is structural. */
 .c2proc {
   position: relative;
   z-index: 2;
-  padding: clamp(64px, 12vh, 150px) var(--gut) clamp(80px, 16vh, 190px);
+  height: 280vh;
   background: var(--paper);
+  --drawn: 0;
 }
 
-.c2proc__head { margin-bottom: clamp(40px, 8vh, 110px); }
+.c2proc__pin {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  padding: clamp(88px, 13vh, 150px) var(--gut) clamp(30px, 6vh, 64px);
+}
+
+.c2proc__head {
+  display: grid;
+  gap: 14px;
+  max-width: 34ch;
+}
 
 .c2proc__title {
-  margin-top: 22px;
-  font-size: clamp(1.7rem, 4.4vw, 3.4rem);
+  font-size: clamp(1.4rem, 2.8vw, 2.3rem);
   font-weight: 500;
-  letter-spacing: -0.04em;
-  line-height: 1.03;
-  max-width: 18ch;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
 }
 
 .c2proc__title span { display: block; }
 .c2proc__title span:nth-child(2) { color: var(--ink-38); }
 
-.c2proc__body {
+.c2proc__stage {
   position: relative;
-  min-height: clamp(560px, 76vh, 900px);
+  margin-top: clamp(16px, 3.5vh, 42px);
 }
 
-/* The only place on the page that shows its setting-out. It belongs here:
-   this is the section that redraws the hero's plotted line. */
-.c2proc__body .c2grid {
-  inset: -4% -2%;
-  background-size: 74px 74px;
-  opacity: 0.85;
+.c2proc__stage .c2grid {
+  inset: -8% -3%;
+  background-size: 68px 68px;
+  opacity: 0.7;
 }
 
-.c2proc__path {
+/* ---- the route */
+.c2proc__route { position: absolute; inset: 0; }
+
+.c2proc__route i {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
+  display: block;
 }
 
-.c2proc__ghost,
-.c2proc__ink {
-  fill: none;
-  vector-effect: non-scaling-stroke;
-  stroke-linecap: square;
+.c2proc__route i[data-axis='h'] { height: 1px; }
+.c2proc__route i[data-axis='v'] { width: 1px; }
+
+.c2proc__route--ghost i { background: var(--ink-10); }
+
+.c2proc__route--ink i {
+  background: var(--blue);
+  /* This segment's own 0..1, taken out of the route's total progress. */
+  --s: clamp(0, calc((var(--drawn) - var(--a)) / var(--l)), 1);
 }
 
-.c2proc__ghost { stroke: var(--ink-10); stroke-width: 1; }
+.c2proc__route--ink i[data-axis='h'] { transform: scaleX(var(--s)); }
+.c2proc__route--ink i[data-axis='v'] { transform: scaleY(var(--s)); }
 
-/* The line is plotted, not revealed: pathLength is 1, so a dash offset of
-   1 − p is literally the fraction of it that has been drawn. */
-.c2proc__ink {
-  stroke: var(--blue);
-  stroke-width: 1.5;
-  stroke-dasharray: 1;
-  stroke-dashoffset: calc(1 - var(--drawn, 0));
+/* Drawn from the end the line arrives at — the one leftward run included. */
+.c2proc__route--ink i[data-axis='h'][data-dir='1'] { transform-origin: left center; }
+.c2proc__route--ink i[data-axis='h'][data-dir='-1'] { transform-origin: right center; }
+.c2proc__route--ink i[data-axis='v'] { transform-origin: center top; }
+
+/* ---- the nodes, sitting on the route itself */
+.c2proc__nodes { position: absolute; inset: 0; }
+
+.c2proc__node {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -5px 0 0 -5px;
+  border: 1px solid var(--ink-38);
+  background: var(--paper);
+  transform: scale(0.4);
+  transition: transform 0.5s var(--ease), border-color 0.5s ease, background-color 0.5s ease;
 }
 
-.c2proc__steps {
-  position: relative;
-  height: 100%;
-  display: grid;
+.c2proc__node[data-on='on'] {
+  transform: scale(1);
+  border-color: var(--blue);
+  background: var(--blue);
 }
+
+.c2proc__node[data-past='true'] {
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+/* ---- the four blocks, each standing on its landing */
+.c2proc__steps { position: absolute; inset: 0; }
 
 .c2proc__step {
   position: absolute;
-  width: min(30ch, 34vw);
-  opacity: 0;
-  transform: translateY(16px);
-  transition: opacity 0.7s ease, transform 0.8s var(--ease);
+  left: var(--bx);
+  bottom: calc(var(--by) + 12px);
+  width: clamp(200px, 25vw, 330px);
+  opacity: 0.2;
+  transform: translateY(10px);
+  transition: opacity 0.6s var(--ease), transform 0.75s var(--ease);
 }
 
-.c2proc__step[data-on='true'] { opacity: 1; transform: none; }
-
-.c2proc__step:nth-child(1) { left: calc(22% + 26px); top: 0; }
-.c2proc__step:nth-child(2) { left: calc(74% + 26px); top: 26%; width: min(24ch, 22vw); }
-.c2proc__step:nth-child(3) { left: calc(18% + 26px); top: 52%; }
-.c2proc__step:nth-child(4) { left: calc(66% + 26px); top: 78%; width: min(24ch, 26vw); }
+.c2proc__step[data-on='on'] { opacity: 1; transform: none; }
+.c2proc__step[data-past='true'] { opacity: 0.4; }
 
 .c2proc__index {
   font-size: 0.625rem;
@@ -1187,48 +1220,72 @@
 }
 
 .c2proc__name {
-  margin: 6px 0 10px;
-  font-size: clamp(1.4rem, 3vw, 2.3rem);
+  margin: 4px 0 8px;
+  font-size: clamp(1.2rem, 2.3vw, 1.85rem);
   font-weight: 500;
   letter-spacing: -0.035em;
   line-height: 1;
+  overflow: hidden;
+  padding-bottom: 0.1em;
 }
+
+.c2proc__name span {
+  display: block;
+  transform: translateY(110%);
+  transition: transform 0.7s var(--ease) 0.05s;
+}
+
+.c2proc__step[data-on='on'] .c2proc__name span { transform: none; }
 
 .c2proc__copy {
-  font-size: 0.8125rem;
-  line-height: 1.62;
+  font-size: 0.78125rem;
+  line-height: 1.55;
   color: var(--ink-58);
-  max-width: 30ch;
 }
 
-.c2proc__node {
-  position: absolute;
-  left: -26px;
-  top: 4px;
-  width: 9px;
-  height: 9px;
-  border: 1px solid var(--blue);
-  background: var(--paper);
-  transform: translate(-50%, 0) scale(0.2);
-  transition: transform 0.5s var(--ease);
+/* The disciplines the removed capabilities panel used to list, set against
+   the stage of work they actually belong to. */
+.c2proc__terms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 13px;
+  margin-top: 11px;
+  padding-top: 9px;
+  border-top: 1px solid var(--ink-10);
 }
 
-.c2proc__step[data-on='true'] .c2proc__node { transform: translate(-50%, 0) scale(1); }
+.c2proc__terms li {
+  font-size: 0.5625rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-38);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.5s ease, transform 0.55s var(--ease);
+  transition-delay: calc(0.18s + var(--k) * 0.06s);
+}
+
+.c2proc__step[data-on='on'] .c2proc__terms li { opacity: 1; transform: none; }
 
 /* ============================================================= statement */
 .c2say {
   position: relative;
   z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.85fr);
+  align-items: center;
+  gap: clamp(28px, 5vw, 90px);
   padding: clamp(90px, 20vh, 230px) var(--gut);
   background: var(--dark);
   color: var(--on-dark);
-  --r: clamp(0, calc((var(--p, 0) - 0.18) / 0.34), 1);
 }
+
+.c2say__copy { min-width: 0; }
 
 .c2say__label { margin-bottom: clamp(36px, 7vh, 88px); }
 
 .c2say__lines {
-  font-size: clamp(2rem, 6.6vw, 5.6rem);
+  font-size: clamp(2rem, 5.4vw, 4.6rem);
   font-weight: 500;
   letter-spacing: -0.045em;
   line-height: 1.02;
@@ -1236,7 +1293,7 @@
 }
 
 .c2say__line {
-  --s: clamp(0, calc((var(--p, 0) - 0.16 - var(--i) * 0.06) / 0.2), 1);
+  --s: clamp(0, calc((var(--p, 0) - 0.14 - var(--i) * 0.055) / 0.18), 1);
   display: block;
   position: relative;
 }
@@ -1285,7 +1342,6 @@
 
 .c2say__foot {
   margin-top: clamp(40px, 8vh, 96px);
-  margin-left: auto;
   max-width: 42ch;
   font-size: 0.8125rem;
   line-height: 1.65;
@@ -1293,84 +1349,74 @@
   opacity: clamp(0, calc((var(--p, 0) - 0.42) / 0.18), 1);
 }
 
-/* ================================================================= proof */
-.c2proof {
-  position: relative;
-  z-index: 2;
-  padding: clamp(54px, 10vh, 120px) 0 clamp(54px, 10vh, 120px);
-  background: var(--dark-2);
-  color: var(--on-dark);
-  overflow: hidden;
-  border-top: 1px solid var(--on-dark-14);
-}
-
-.c2proof__label { margin: 0 var(--gut) clamp(30px, 6vh, 64px); }
-
-.c2proof__band {
-  display: grid;
-  gap: clamp(14px, 2.4vh, 26px);
-  mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
-}
-
-.c2proof__rail { overflow: hidden; }
-
-.c2proof__run {
+/* The other half of the argument: the words are about what happens after the
+   drawing leaves the desk, and this is the drawing that leaves. */
+.c2say__draw {
+  min-width: 0;
+  height: min(62vh, 560px);
   display: flex;
-  align-items: baseline;
-  gap: clamp(28px, 4vw, 64px);
-  width: max-content;
-  animation: c2rail 38s linear infinite;
+  flex-direction: column;
+  justify-content: center;
 }
 
-.c2proof__rail[data-dir='right'] .c2proof__run {
-  animation-direction: reverse;
-  animation-duration: 46s;
+/* ======================================================= scroll drawings */
+/* The two plotted compositions — the structural frame beside the statement
+   and the site plan beside the call to action. Both are ordered: each group
+   takes its own slice of the section's progress, so the building cannot get
+   a slab before it has a column, and the plot cannot get a footprint before
+   it has a boundary. */
+.c2draw {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
-@keyframes c2rail {
-  from { transform: translate3d(0, 0, 0); }
-  to   { transform: translate3d(-50%, 0, 0); }
+.c2draw__ink,
+.c2draw__hair,
+.c2draw__accent {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: square;
+  stroke-dasharray: 1;
+  stroke-dashoffset: calc(1 - var(--d, 0));
 }
 
-.c2proof__name {
-  font-size: clamp(1.1rem, 2.4vw, 2rem);
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  color: var(--on-dark-58);
-  white-space: nowrap;
+/* A drawing has to survive being looked at across a room. At 58% and 30% on
+   charcoal these read as a smudge rather than as a sheet. */
+.c2draw__ink { stroke: var(--on-dark-72); stroke-width: 1.3; }
+.c2draw__hair { stroke: var(--on-dark-40); stroke-width: 1; }
+.c2draw__accent { stroke: var(--accent); stroke-width: 1.5; }
+
+/* Five equal slices of the section's own progress, offset so each group
+   starts as the one before it finishes. */
+.c2draw__g[data-step='1'] { --d: clamp(0, calc((var(--p, 0) - 0.06) / 0.16), 1); }
+.c2draw__g[data-step='2'] { --d: clamp(0, calc((var(--p, 0) - 0.20) / 0.16), 1); }
+.c2draw__g[data-step='3'] { --d: clamp(0, calc((var(--p, 0) - 0.34) / 0.16), 1); }
+.c2draw__g[data-step='4'] { --d: clamp(0, calc((var(--p, 0) - 0.48) / 0.16), 1); }
+.c2draw__g[data-step='5'] { --d: clamp(0, calc((var(--p, 0) - 0.62) / 0.18), 1); }
+.c2draw__mark { --d: clamp(0, calc((var(--p, 0) - 0.74) / 0.16), 1); }
+
+/* The survey mark settles last, then tracks the cursor by a few pixels. */
+.c2draw__mark {
+  transform: translate(calc(var(--mx, 0) * var(--near, 0) * 6px),
+                       calc(var(--my, 0) * var(--near, 0) * 6px));
 }
 
-/* The interruption: a figure comes past the same rail at four times the
-   size and takes the line over for a moment. */
-.c2proof__fact {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 12px;
-  white-space: nowrap;
-  padding: 0 clamp(10px, 1.6vw, 26px);
-  border-left: 1px solid var(--on-dark-14);
-  border-right: 1px solid var(--on-dark-14);
-}
-
-.c2proof__fact b {
-  font-size: clamp(1.8rem, 4.6vw, 3.6rem);
-  font-weight: 500;
-  letter-spacing: -0.045em;
-  color: var(--accent);
-}
-
-.c2proof__fact em {
-  font-style: normal;
-  font-size: 0.625rem;
-  letter-spacing: 0.2em;
+.c2draw__key,
+.c2say__key,
+.c2cta__key {
+  display: flex;
+  gap: 18px;
+  margin-top: 18px;
+  font-size: 0.5625rem;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--on-dark-58);
+  color: var(--on-dark-30);
 }
 
-.c2proof__note {
-  margin: clamp(30px, 6vh, 64px) var(--gut) 0;
-  font-size: 0.6875rem;
-  color: var(--on-dark-30);
+.c2say__key span,
+.c2cta__key span {
+  opacity: clamp(0, calc((var(--p, 0) - 0.55) / 0.2), 1);
 }
 
 .c2page .sr-only {
@@ -1383,25 +1429,34 @@
   white-space: nowrap;
 }
 
+
 /* =================================================================== cta */
 .c2cta {
   position: relative;
   z-index: 2;
-  min-height: 86vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: clamp(20px, 4vh, 44px);
+  min-height: 90vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.8fr);
+  align-items: center;
+  gap: clamp(28px, 5vw, 90px);
   padding: clamp(80px, 14vh, 170px) var(--gut) clamp(60px, 10vh, 120px);
   background: var(--dark);
   color: var(--on-dark);
+  border-top: 1px solid var(--on-dark-14);
+}
+
+.c2cta__copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(18px, 3vh, 34px);
 }
 
 .c2cta__lines {
-  font-size: clamp(2.6rem, 10vw, 8.5rem);
+  font-size: clamp(2.4rem, 7vw, 6rem);
   font-weight: 500;
   letter-spacing: -0.05em;
-  line-height: 0.95;
+  line-height: 0.96;
 }
 
 .c2cta__lines span { display: block; overflow: hidden; }
@@ -1416,18 +1471,18 @@
 .c2cta__lines span:nth-child(2) b { color: var(--on-dark-58); }
 
 .c2cta__note {
-  max-width: 40ch;
+  max-width: 38ch;
   font-size: 0.875rem;
   line-height: 1.6;
   color: var(--on-dark-58);
   opacity: clamp(0, calc((var(--p, 0) - 0.28) / 0.16), 1);
 }
 
-/* Not a button: a rule the full width of the section with the label riding
-   it. The whole band is the target. */
+/* Not a button: a rule the full width of the block with the label riding it.
+   The whole band is the target. */
 .c2cta__zone {
   position: relative;
-  margin-top: clamp(16px, 3vh, 40px);
+  margin-top: clamp(10px, 2vh, 24px);
   padding-top: clamp(22px, 4vh, 44px);
   display: flex;
   align-items: baseline;
@@ -1449,8 +1504,6 @@
   overflow: visible;
 }
 
-/* A short bright travelling segment that follows the pointer along the
-   rule — the rule reaching for the cursor rather than a hover state. */
 .c2cta__rule::after {
   content: '';
   position: absolute;
@@ -1466,7 +1519,7 @@
   display: inline-flex;
   align-items: baseline;
   gap: 14px;
-  font-size: clamp(1.1rem, 2.6vw, 2rem);
+  font-size: clamp(1.05rem, 2.4vw, 1.8rem);
   font-weight: 500;
   letter-spacing: -0.02em;
   translate: calc(var(--mx) * 1px) calc(var(--my) * 1px);
@@ -1492,6 +1545,17 @@
 .c2cta__secondary:hover {
   color: var(--on-dark);
   border-color: var(--on-dark);
+}
+
+/* A plot rather than a building — deliberately a different drawing from the
+   structural frame above it, because the section is asking a different
+   question. */
+.c2cta__draw {
+  min-width: 0;
+  height: min(58vh, 520px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 /* ================================================================ footer */
@@ -1577,42 +1641,49 @@
 .c2foot__legal { text-transform: none; letter-spacing: 0.04em; }
 
 /* ============================================================ responsive */
-/* Tablet: the same choreography with the horizontal travel taken out of it.
-   Big lateral moves that work at 1600px read as jitter at 900. */
-@media (max-width: 1180px) {
-  .c2work__item { --drift: 0vw; }
-  .c2work__meta { width: min(24ch, 32vw); }
+/* The choreography is the same at every width. What changes is how much
+   lateral travel the layout can afford: a 12vw frame growth that reads as
+   confidence at 1920 reads as jitter at 1024, and as a broken column at 390.
+   So the moves shorten, the columns narrow, and on a phone two of them stack
+   — but nothing is switched off, because a section that only animates on a
+   desktop is a section that was decoration. */
 
-  .c2cap__item {
-    grid-template-columns: minmax(0, 0.5fr) minmax(0, 0.5fr);
-    gap: clamp(20px, 3vw, 40px);
-  }
+/* ---- 1440 and down: the frame stops trying to be half the screen */
+@media (max-width: 1440px) {
+  .c2work { --textw: clamp(240px, 28vw, 400px); }
+  .c2work__frame { width: calc((42 + var(--grow) * 10) * 1vw); }
 
-  .c2cap__body { padding-left: clamp(0px, 4vw, 64px); }
-  .c2cap__index { font-size: clamp(5rem, 17vw, 11rem); }
-  .c2cap__view { height: min(46vh, 380px); }
-
-  .c2proc__step:nth-child(2),
-  .c2proc__step:nth-child(4) { width: min(22ch, 30vw); }
-
-  .c2foot__top { grid-template-columns: 1fr 1fr 1fr; }
-  .c2foot__brand { grid-column: 1 / -1; padding-bottom: 8px; }
+  .c2proc__step { width: clamp(190px, 24vw, 290px); }
 }
 
-@media (max-width: 900px) {
-  .c2nav__links { display: none; }
-  .c2nav__cta { display: none; }
+/* ---- 1280 and down */
+@media (max-width: 1280px) {
+  .c2work { --textw: clamp(230px, 27vw, 350px); }
+  .c2work__frame { top: 21vh; height: 54vh; width: calc((44 + var(--grow) * 8) * 1vw); }
 
-  .c2nav {
-    grid-template-columns: auto 1fr;
-  }
+  .c2say { grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.78fr); }
+  .c2cta { grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.72fr); }
+  .c2say__draw { height: min(54vh, 460px); }
+  .c2cta__draw { height: min(50vh, 420px); }
+
+  .c2proc__name { font-size: clamp(1.15rem, 2.3vw, 1.7rem); }
+  .c2proc__copy { font-size: 0.78125rem; }
+}
+
+/* ---- the navbar's own collapse. Measured, not guessed: the four labels plus
+   the action need about 990px of the 1050 available at this width, and by
+   1100 they are through the right edge. Left exactly as it was. */
+@media (max-width: 1180px) {
+  .c2nav__links,
+  .c2nav__sep,
+  .c2nav__cta { display: none; }
 
   .c2nav__trigger {
     display: inline-flex;
-    justify-self: end;
     align-items: center;
     gap: 10px;
     font-size: 0.625rem;
+    line-height: 1;
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--nav-ink);
@@ -1633,63 +1704,101 @@
 
   .c2nav[data-open='true'] {
     --nav-ink: var(--ink);
+    --nav-line: rgba(17, 19, 23, 0.16);
     --nav-bg: transparent;
-    backdrop-filter: none;
   }
 
   .c2nav[data-open='true'] .c2nav__trigger i b:first-child { transform: translateY(2.5px) rotate(9deg); }
   .c2nav[data-open='true'] .c2nav__trigger i b:last-child { transform: translateY(-2.5px) rotate(-9deg); }
 }
 
-/* Phone: not the desktop layout scaled down. The project frame becomes a
-   full-width plate with its metadata under it, the capabilities stack, and
-   the process line runs straight down the left margin. Every section keeps
-   its motion; the pins just get shorter, because a 400vh pin on a phone is
-   a hostage situation. */
+/* ---- 1024 and down: the two dark sections give up their second column and
+   set the drawing under the copy at a smaller scale, where it still reads as
+   a drawing rather than a decoration. */
+@media (max-width: 1024px) {
+  .c2work { --textw: clamp(210px, 26vw, 300px); }
+  .c2work__frame {
+    top: 22vh;
+    height: 48vh;
+    width: calc((46 + var(--grow) * 8) * 1vw);
+    max-width: calc(100vw - var(--gut) * 2 - var(--textw) - 3vw);
+  }
+  .c2work__name { font-size: clamp(1.4rem, 3.6vw, 2.2rem); }
+  .c2work__note { display: none; }
+
+  .c2say,
+  .c2cta {
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(34px, 6vh, 64px);
+  }
+
+  .c2say__draw,
+  .c2cta__draw {
+    height: min(38vh, 320px);
+    align-items: flex-start;
+  }
+
+  .c2say__draw .c2draw,
+  .c2cta__draw .c2draw { max-width: 420px; }
+
+  .c2say__lines { max-width: 20ch; }
+
+  .c2proc__step { width: clamp(180px, 26vw, 250px); }
+  .c2proc__name { font-size: clamp(1.05rem, 2.1vw, 1.5rem); }
+  .c2proc__copy { font-size: 0.75rem; }
+  .c2proc__terms { gap: 3px 10px; margin-top: 9px; padding-top: 8px; }
+
+  .c2film__frame { width: clamp(200px, 30vw, 320px); }
+
+  .c2foot__top { grid-template-columns: 1fr 1fr 1fr; }
+  .c2foot__brand { grid-column: 1 / -1; padding-bottom: 8px; }
+}
+
+/* ---- phone: not the desktop layout scaled down.
+   The project frame becomes a full-width plate with its text under it, and
+   the process route straightens into a single plotted line down the margin —
+   drawn with a transform rather than a swapped path, so it behaves the same
+   in every engine. */
 @media (max-width: 760px) {
   .c2page { --gut: 20px; }
 
   .c2hand__rule { top: max(58%, calc((1 - var(--paper-t)) * 100%)); }
   .c2hand__meta { font-size: 0.5625rem; letter-spacing: 0.2em; }
 
+  /* --- selected work */
   .c2work { height: calc((var(--count) * 0.86 + 0.5) * 100vh); }
-  .c2work__head { top: 86px; }
-
-  .c2work__item { --drift: 0vw; }
+  .c2work__head { top: 84px; }
 
   .c2work__frame {
-    left: 0 !important;
-    width: 100% !important;
-    top: 22vh !important;
-    height: 40vh !important;
+    left: var(--gut);
+    right: var(--gut);
+    top: 14vh;
+    height: 38vh;
+    width: auto;
+    max-width: none;
+    transform: translate3d(0, calc(var(--out) * -2vh), 0);
   }
 
-  .c2work__sector {
-    left: var(--gut) !important;
-    right: auto !important;
-    top: 16vh !important;
-    bottom: auto !important;
-    font-size: 0.6875rem;
+  /* Directly under the photograph, not pinned to the bottom of the screen:
+     bottom-anchoring on a tall phone leaves a third of a viewport of nothing
+     between the picture and its caption. */
+  .c2work__text {
+    left: var(--gut);
+    right: var(--gut);
+    top: 57vh;
+    bottom: auto;
+    translate: 0;
+    width: auto;
   }
 
-  .c2work__meta {
-    left: var(--gut) !important;
-    right: var(--gut) !important;
-    top: 64vh !important;
-    bottom: auto !important;
-    width: auto !important;
-    text-align: left !important;
-  }
+  .c2work__name { font-size: 1.7rem; margin-bottom: 16px; }
+  .c2work__meta div { font-size: 0.6875rem; }
+  .c2work__underline { margin: 16px 0 0; }
+  .c2work__ticks { bottom: 7vh; }
 
-  .c2work__item[data-meta='br'] .c2work__meta dl div,
-  .c2work__item[data-meta='tr'] .c2work__meta dl div { flex-direction: row; }
-
-  .c2work__meta h3 { font-size: 1.5rem; margin-bottom: 12px; }
-  .c2work__note { display: none; }
-  .c2work__seam { bottom: 8vh; }
-
-  .c2stats__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 34px 18px; }
-  .c2stat { padding-top: 0 !important; }
+  /* --- stats */
+  .c2stats__grid { grid-template-columns: 1fr 1fr; gap: 34px 18px; }
+  .c2stat { padding-top: 0 !important; transform: none; }
   .c2stat:nth-child(1) { grid-column: 1 / span 2; }
   .c2stat:nth-child(2) { grid-column: 1 / span 1; }
   .c2stat:nth-child(3) { grid-column: 2 / span 1; }
@@ -1698,59 +1807,93 @@
   .c2stat:nth-child(2) .c2stat__value { font-size: 3.4rem; }
   .c2stat:nth-child(3) .c2stat__value { font-size: 3.8rem; }
   .c2stat:nth-child(4) .c2stat__value { font-size: 3.2rem; }
+  .c2stat__rule { width: calc(var(--r) * 100%); }
 
-  .c2cap { height: calc((var(--count) * 0.9 + 0.4) * 100vh); }
-
-  .c2cap__item {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto;
-    align-content: center;
-    gap: 22px;
-    padding: 0 var(--gut);
-  }
-
-  .c2cap__index {
-    left: auto;
-    right: var(--gut);
-    top: 17vh;
-    translate: 0;
-    font-size: 5.5rem;
-  }
-
-  .c2cap__body { grid-row: 2; grid-column: 1; padding-left: 0; }
-  .c2cap__view { grid-row: 1; grid-column: 1; height: 26vh; }
-  .c2cap__headline { font-size: 1.7rem; }
-  .c2cap__note { display: none; }
-  .c2cap__ticks { bottom: 26px; }
-
+  /* --- film strip */
   .c2film__frame { width: 60vw; height: 30vh; }
   .c2film__frame[data-open='true'] { width: 76vw; }
   .c2film__legend { display: none; }
 
-  .c2proc__body { min-height: 0; }
+  /* --- process: one line down the margin */
+  .c2proc { height: 250vh; }
+  .c2proc__pin { padding-top: clamp(80px, 12vh, 120px); }
+  .c2proc__route,
+  .c2proc__nodes { display: none; }
+  .c2proc__stage .c2grid { display: none; }
 
-  /* The zigzag collapses to a single plotted line down the margin. The path
-     is re-declared rather than re-rendered: same element, same dash-offset
-     draw, one different route. Its x is in viewBox units, so 50 of 100 puts
-     it at the middle of the 26px column — which is where the nodes are. */
-  .c2proc__path { width: 26px; left: 0; right: auto; }
-  .c2proc__ghost,
-  .c2proc__ink { d: path('M 50 0 L 50 100'); }
+  .c2proc__stage::before,
+  .c2proc__stage::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    transform-origin: top;
+  }
 
-  .c2proc__steps { display: grid; gap: 40px; padding-left: 40px; }
+  .c2proc__stage::before { background: var(--ink-10); }
+
+  .c2proc__stage::after {
+    background: var(--blue);
+    transform: scaleY(var(--drawn));
+  }
+
+  .c2proc__steps {
+    position: relative;
+    inset: auto;
+    display: grid;
+    align-content: space-between;
+    height: 100%;
+    padding: 2px 0 10px 34px;
+  }
 
   .c2proc__step {
     position: relative;
-    left: auto !important;
-    top: auto !important;
-    width: auto !important;
+    left: auto;
+    bottom: auto;
+    width: auto;
+    transform: translateY(10px);
   }
 
-  .c2proc__node { left: -27px; top: 2px; }
-  .c2proc__name { font-size: 1.5rem; }
+  .c2proc__step[data-on='on'] { transform: none; }
 
+  .c2proc__step::before {
+    content: '';
+    position: absolute;
+    left: -30px;
+    top: 4px;
+    width: 9px;
+    height: 9px;
+    margin-left: -4px;
+    border: 1px solid var(--ink-38);
+    background: var(--paper);
+    transform: scale(0.4);
+    transition: transform 0.5s var(--ease), background-color 0.5s ease, border-color 0.5s ease;
+  }
+
+  .c2proc__step[data-on='on']::before {
+    transform: scale(1);
+    border-color: var(--blue);
+    background: var(--blue);
+  }
+
+  .c2proc__step[data-past='true']::before {
+    border-color: var(--ink);
+    background: var(--ink);
+  }
+
+  .c2proc__name { font-size: 1.4rem; margin: 4px 0 7px; }
+  .c2proc__copy { font-size: 0.78125rem; }
+  .c2proc__terms { display: none; }
+
+  /* --- statement and cta */
+  .c2say { padding-block: clamp(70px, 14vh, 130px); }
   .c2say__lines { max-width: none; }
-  .c2say__foot { margin-left: 0; }
+  .c2say__draw,
+  .c2cta__draw { height: min(30vh, 260px); }
+  .c2say__draw .c2draw,
+  .c2cta__draw .c2draw { max-width: 300px; }
 
   .c2cta { min-height: 78vh; }
   .c2cta__zone { flex-direction: column; align-items: flex-start; gap: 18px; }
@@ -1760,15 +1903,23 @@
   .c2foot__bottom { flex-direction: column; gap: 10px; }
 }
 
+/* ---- 390 and below: the smallest thing we promise to hold */
 @media (max-width: 420px) {
-  .c2work__meta dl { display: none; }
+  .c2work__frame { top: 13vh; height: 35vh; }
+  .c2work__text { top: 54vh; }
+  .c2work__name { font-size: 1.5rem; }
   .c2menu__list span { font-size: 1.9rem; }
+  .c2say__draw,
+  .c2cta__draw { height: 210px; }
+  .c2proc__copy { font-size: 0.75rem; }
 }
 
 /* ======================================================== reduced motion */
 /* Nothing is removed and nothing moves. Every scroll-linked value is pinned
    to its resolved state, so the page reads as a finished document: all four
-   projects present, all figures filled, the process line fully drawn. */
+   projects present as a list, all figures filled, both drawings complete and
+   the process route fully plotted. Lenis is never constructed at all, so the
+   page also scrolls natively. */
 @media (prefers-reduced-motion: reduce) {
   .c2page *,
   .c2page *::before,
@@ -1780,14 +1931,14 @@
 
   .c2hand { display: none; }
 
+  /* --- selected work becomes the document that was underneath it */
   .c2work { height: auto; }
-  .c2work__pin { position: static; height: auto; overflow: visible; padding: 120px 0 60px; }
-  .c2work__head { position: static; margin-bottom: 40px; }
+  .c2work__pin { position: static; height: auto; overflow: visible; padding: 120px 0 40px; }
+  .c2work__head { position: static; margin: 0 0 40px; }
   .c2work__rule { transform: none; }
   .c2work__stage,
-  .c2work__seam { display: none; }
+  .c2work__ticks { display: none; }
 
-  /* The choreography is replaced by the document that was underneath it. */
   .c2work__index {
     position: static;
     width: auto;
@@ -1810,33 +1961,55 @@
   .c2work__index h3 { font-size: 1.5rem; font-weight: 500; letter-spacing: -0.03em; }
   .c2work__index p { grid-column: 2; font-size: 0.8125rem; color: var(--ink-58); margin-top: 6px; }
 
-  .c2cap { height: auto; }
-  .c2cap__pin { position: static; height: auto; overflow: visible; padding: 120px 0 60px; }
-  .c2cap__head { position: static; margin-bottom: 40px; padding: 0 var(--gut); }
-  .c2cap__stage { position: static; display: grid; gap: 64px; }
-
-  .c2cap__item {
-    position: static;
-    --in: 1;
-    --out: 0;
-    --live: 1;
-  }
-
-  .c2cap__index { position: static; translate: 0; font-size: 3rem; margin-bottom: 12px; clip-path: none; }
-  .c2cap__view { clip-path: none; }
-  .c2cap__ticks { display: none; }
-
-  .c2work__item { --in: 1; --out: 0; --live: 1; }
-  .c2stat { --r: 1; }
-  .c2say { --r: 1; }
+  /* --- every scroll-linked value at its resolved end */
+  .c2work__item { --in: 1; --out: 0; --live: 1; --grow: 1; }
+  .c2stat { --r: 1; transform: none; }
   .c2say__line { --s: 1; }
+  .c2say__foot { opacity: 1; }
   .c2cta__lines b { --s: 1; }
   .c2cta__note { opacity: 1; }
-  .c2say__foot { opacity: 1; }
-  .c2proc__ink { stroke-dashoffset: 0; }
-  .c2proc__step { opacity: 1; transform: none; }
-  .c2proc__node { transform: translate(-50%, 0) scale(1); }
-  .c2work__head .c2work__rule { transform: scaleX(1); }
-  .c2proof__run { animation: none; }
+  .c2draw__g,
+  .c2draw__mark { --d: 1; }
+  .c2draw__mark { transform: none; }
+  .c2say__key span,
+  .c2cta__key span { opacity: 1; }
   .c2film__track { transform: none !important; }
+
+  /* --- the process route, drawn, with all four steps legible */
+  .c2proc { height: auto; }
+  .c2proc__pin { position: static; height: auto; overflow: visible; padding: 120px var(--gut) 90px; }
+  .c2proc__route,
+  .c2proc__nodes { display: none; }
+  .c2proc__stage { margin-top: 40px; }
+  .c2proc__stage .c2grid { display: none; }
+
+  .c2proc__steps {
+    position: static;
+    display: grid;
+    gap: 40px;
+    padding-left: 30px;
+    border-left: 1px solid var(--blue);
+  }
+
+  .c2proc__step {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    width: auto;
+    opacity: 1;
+    transform: none;
+  }
+
+  .c2proc__step::before {
+    content: '';
+    position: absolute;
+    left: -34px;
+    top: 4px;
+    width: 9px;
+    height: 9px;
+    background: var(--blue);
+  }
+
+  .c2proc__name span { transform: none; }
+  .c2proc__terms li { opacity: 1; transform: none; }
 }

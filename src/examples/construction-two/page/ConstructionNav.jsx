@@ -7,6 +7,11 @@ import { usePrefersReducedMotion } from './scroll.js'
  * page: a dark WebGL studio, warm paper, two inverted sections and a charcoal
  * close.
  *
+ * Two blocks and nothing between them — the wordmark on the left, everything
+ * actionable on the right, set as a single line of small uppercase type. It is
+ * a drawing's title block rather than a menu bar: flat, hairline-ruled, no
+ * shape behind any item.
+ *
  * Rather than hard-coding scroll positions, each section declares what it is
  * with `data-zone="dark|light"`. On scroll this finds whichever section is
  * crossing the bar's own baseline and adopts it. Two custom properties carry
@@ -106,41 +111,45 @@ function ConstructionNav() {
           }}
         >
           <span className="c2nav__mark">{BRAND.mark}</span>
-          <i aria-hidden="true" />
+          <i className="c2nav__tick" aria-hidden="true" />
           <span className="c2nav__name">{BRAND.name}</span>
         </a>
 
-        <nav className="c2nav__links" aria-label="Sections">
-          {NAV_LINKS.map((link) => (
-            <button key={link.id} type="button" onClick={() => go(link.target)}>
-              <span>{link.label}</span>
-            </button>
-          ))}
-        </nav>
+        <div className="c2nav__right">
+          <nav className="c2nav__links" aria-label="Sections">
+            {NAV_LINKS.map((link) => (
+              <button key={link.id} type="button" onClick={() => go(link.target)}>
+                {link.label}
+              </button>
+            ))}
+          </nav>
 
-        <button
-          className="c2nav__cta"
-          type="button"
-          onClick={() => go(NAV_CTA.target)}
-        >
-          <span>{NAV_CTA.label}</span>
-          <i aria-hidden="true">↗</i>
-        </button>
+          <i className="c2nav__sep" aria-hidden="true" />
 
-        <button
-          className="c2nav__trigger"
-          type="button"
-          ref={triggerRef}
-          aria-expanded={open}
-          aria-controls="c2-menu"
-          onClick={() => setOpen((v) => !v)}
-        >
-          <span>{open ? 'Close' : 'Menu'}</span>
-          <i aria-hidden="true">
-            <b />
-            <b />
-          </i>
-        </button>
+          <button
+            className="c2nav__cta"
+            type="button"
+            onClick={() => go(NAV_CTA.target)}
+          >
+            <span>{NAV_CTA.label}</span>
+            <i aria-hidden="true">↗</i>
+          </button>
+
+          <button
+            className="c2nav__trigger"
+            type="button"
+            ref={triggerRef}
+            aria-expanded={open}
+            aria-controls="c2-menu"
+            onClick={() => setOpen((v) => !v)}
+          >
+            <span>{open ? 'Close' : 'Menu'}</span>
+            <i aria-hidden="true">
+              <b />
+              <b />
+            </i>
+          </button>
+        </div>
 
         <i className="c2nav__rule" aria-hidden="true" />
       </header>

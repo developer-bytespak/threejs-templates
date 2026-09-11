@@ -4,14 +4,12 @@ import { TRACK_VH } from './story.js'
 import ConstructionNav from './page/ConstructionNav.jsx'
 import SelectedWork from './page/SelectedWork.jsx'
 import ProjectStats from './page/ProjectStats.jsx'
-import Capabilities from './page/Capabilities.jsx'
 import ProjectFilmStrip from './page/ProjectFilmStrip.jsx'
 import ProcessSection from './page/ProcessSection.jsx'
 import EditorialStatement from './page/EditorialStatement.jsx'
-import ClientProof from './page/ClientProof.jsx'
 import FinalProjectCTA from './page/FinalProjectCTA.jsx'
 import ConstructionFooter from './page/ConstructionFooter.jsx'
-import { useScrollLink } from './page/scroll.js'
+import { useLenis, usePrefersReducedMotion, useScrollLink } from './page/scroll.js'
 import './page/page.css'
 
 /**
@@ -49,6 +47,12 @@ function useHashLanding() {
 
 function ConstructionTwoPage() {
   const heroRef = useRef(null)
+  const reduced = usePrefersReducedMotion()
+
+  // One Lenis for the whole route, mounted here and nowhere else. It is driven
+  // from the same animation frame as the scroll driver, so the page has a
+  // single loop rather than one for smoothing and one for measuring.
+  useLenis(reduced)
   useScrollLink(heroRef, 'pin')
   useHashLanding()
 
@@ -84,11 +88,9 @@ function ConstructionTwoPage() {
 
         <SelectedWork />
         <ProjectStats />
-        <Capabilities />
         <ProjectFilmStrip />
         <ProcessSection />
         <EditorialStatement />
-        <ClientProof />
         <FinalProjectCTA />
       </main>
 

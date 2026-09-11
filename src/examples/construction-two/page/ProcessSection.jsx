@@ -1,94 +1,178 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { PROCESS } from './content.js'
 import { useScrollLink } from './scroll.js'
 
 /**
- * The process, drawn rather than listed.
+ * The approach, drawn as one route.
  *
- * This is the page's deliberate callback to the hero: the line that connects
- * the four stages is not faded in, it is *plotted*. The path carries
- * `pathLength="1"`, so a dash offset of `1 - p` is exactly the fraction of the
- * line that has been drawn — the same behaviour as the pen on the sheet
- * upstairs, expressed in two CSS declarations instead of a vertex buffer.
+ * The version this replaces put four steps at fixed coordinates in a tall
+ * block and let the scroll reveal them independently — which is why Plan,
+ * Coordinate and Build ended up on top of each other, and why four separate
+ * blue segments never added up to anything.
  *
- * Each stage switches on when the pen reaches it, not when the stage scrolls
- * into view, so the copy always arrives behind the line rather than ahead of it.
+ * This is one continuous route across a pinned stage, and three decisions
+ * make it hold together:
+ *
+ * ONE LINE, PLOTTED IN ORDER. The route is a descending staircase — landing,
+ * drop, landing, drop — and it is drawn as seven measured segments, each one
+ * owning its slice of the total length. Segment five cannot start until
+ * segment four has finished, so the line genuinely travels rather than
+ * fading in everywhere at once.
+ *
+ * DOM, NOT DASHES. The obvious implementation is one SVG path with
+ * pathLength="1" and a dash offset — which is what the pen upstairs does, and
+ * what this did at first. It is wrong here: the stage is drawn with
+ * preserveAspectRatio="none" so that coordinates read as percentages, and a
+ * dash pattern under non-uniform scale plus non-scaling-stroke comes apart
+ * into disconnected pieces. Seven scaled elements are exact in every engine.
+ *
+ * NOTHING CROSSES ANYTHING. Every block sits above its own landing, the way
+ * an annotation sits over a dimension line. The line therefore passes under
+ * the text it belongs to and never through it, and because consecutive
+ * landings step sideways as well as down, no two blocks share both a column
+ * and a neighbouring band.
  */
 
-// Where each stage sits along the drawn path, 0..1.
-const MARKS = [0.06, 0.36, 0.66, 0.95]
+/* The route, in a 100×100 stage box read as percentages.
+   Landings at y 26, 48, 70 and 92; drops between them. Total length 270. */
+const SEGMENTS = [
+  { axis: 'h', x: 0, y: 26, len: 40, dir: 1, at: 0 },     //  0 →  40
+  { axis: 'v', x: 40, y: 26, len: 22, dir: 1, at: 40 },   // 40 →  62
+  { axis: 'h', x: 40, y: 48, len: 42, dir: 1, at: 62 },   // 62 → 104
+  { axis: 'v', x: 82, y: 48, len: 22, dir: 1, at: 104 },  // 104 → 126
+  { axis: 'h', x: 30, y: 70, len: 52, dir: -1, at: 126 }, // 126 → 178, drawn right to left
+  { axis: 'v', x: 30, y: 70, len: 22, dir: 1, at: 178 },  // 178 → 200
+  { axis: 'h', x: 30, y: 92, len: 70, dir: 1, at: 200 },  // 200 → 270
+]
+
+const TOTAL = 270
+
+/* Where the line arrives at each step, as a fraction of the whole route, and
+   where that step's block is anchored. `nx`/`ny` are the node; the block sits
+   on top of the landing that ends there. */
+const STEPS = [
+  { at: 40 / TOTAL, nx: 40, ny: 26, bx: '2%' },
+  { at: 104 / TOTAL, nx: 82, ny: 48, bx: '46%' },
+  { at: 178 / TOTAL, nx: 30, ny: 70, bx: '30%' },
+  { at: 240 / TOTAL, nx: 70, ny: 92, bx: '58%' },
+]
+
+function Route({ kind }) {
+  return (
+    <div className={`c2proc__route c2proc__route--${kind}`} aria-hidden="true">
+      {SEGMENTS.map((s) => (
+        <i
+          key={`${s.axis}${s.at}`}
+          data-axis={s.axis}
+          data-dir={s.dir}
+          style={{
+            '--a': (s.at / TOTAL).toFixed(4),
+            '--l': (s.len / TOTAL).toFixed(4),
+            left: `${s.x}%`,
+            top: `${s.y}%`,
+            [s.axis === 'h' ? 'width' : 'height']: `${s.len}%`,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
 
 function ProcessSection() {
   const ref = useRef(null)
   const steps = useRef([])
+  const nodes = useRef([])
+  const [reached, setReached] = useState(-1)
 
   const onProgress = useCallback((p) => {
-    // The path is drawn over the middle of the section's travel: it starts once
-    // the heading is in and finishes before the section leaves.
-    const drawn = Math.max(0, Math.min((p - 0.16) / 0.6, 1))
-    ref.current?.style.setProperty('--drawn', drawn.toFixed(4))
-    for (let i = 0; i < steps.current.length; i += 1) {
-      const el = steps.current[i]
-      if (!el) continue
-      const on = drawn >= MARKS[i] ? 'true' : 'false'
-      if (el.dataset.on !== on) el.dataset.on = on
+    // The line is drawn across the middle of the pin's travel: it starts once
+    // the heading has settled and finishes before the section hands over.
+    const drawn = Math.max(0, Math.min((p - 0.1) / 0.72, 1))
+    const el = ref.current
+    if (el) el.style.setProperty('--drawn', drawn.toFixed(4))
+
+    let at = -1
+    for (let i = 0; i < STEPS.length; i += 1) {
+      const on = drawn >= STEPS[i].at
+      if (on) at = i
+      const state = on ? 'on' : 'off'
+      const step = steps.current[i]
+      const node = nodes.current[i]
+      if (step && step.dataset.on !== state) step.dataset.on = state
+      if (node && node.dataset.on !== state) node.dataset.on = state
     }
+    setReached((was) => (was === at ? was : at))
   }, [])
 
-  useScrollLink(ref, 'cross', onProgress)
+  useScrollLink(ref, 'pin', onProgress)
 
   return (
-    <section className="c2proc" id="process" data-zone="light" ref={ref} aria-label="Approach">
-      <header className="c2proc__head">
-        <p className="c2label">Approach</p>
-        <h2 className="c2proc__title">
-          <span>Four stages,</span>
-          <span>one construction set.</span>
-        </h2>
-      </header>
+    <section
+      className="c2proc"
+      id="process"
+      data-zone="light"
+      ref={ref}
+      aria-label="Approach"
+    >
+      <div className="c2proc__pin">
+        <header className="c2proc__head">
+          <p className="c2label">Approach</p>
+          <h2 className="c2proc__title">
+            <span>Four stages,</span>
+            <span>one construction set.</span>
+          </h2>
+        </header>
 
-      <div className="c2proc__body">
-        <div className="c2grid" aria-hidden="true" />
+        <div className="c2proc__stage">
+          <div className="c2grid" aria-hidden="true" />
 
-        <svg
-          className="c2proc__path"
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-          focusable="false"
-        >
-          {/* The route the pen takes: in from the left at the film strip's
-              baseline, down through the four stages, out under the statement. */}
-          <path
-            className="c2proc__ghost"
-            d="M0 2 L22 2 L22 26 L74 26 L74 52 L18 52 L18 78 L66 78 L66 99 L100 99"
-            pathLength="1"
-          />
-          <path
-            className="c2proc__ink"
-            d="M0 2 L22 2 L22 26 L74 26 L74 52 L18 52 L18 78 L66 78 L66 99 L100 99"
-            pathLength="1"
-          />
-        </svg>
+          <Route kind="ghost" />
+          <Route kind="ink" />
 
-        <ol className="c2proc__steps">
-          {PROCESS.map((step, i) => (
-            <li
-              className="c2proc__step"
-              key={step.id}
-              data-on="false"
-              style={{ '--i': i }}
-              ref={(el) => {
-                steps.current[i] = el
-              }}
-            >
-              <p className="c2proc__index">{step.index}</p>
-              <h3 className="c2proc__name">{step.title}</h3>
-              <p className="c2proc__copy">{step.body}</p>
-              <i className="c2proc__node" aria-hidden="true" />
-            </li>
-          ))}
-        </ol>
+          {/* The nodes live on the route, not inside the text. */}
+          <div className="c2proc__nodes" aria-hidden="true">
+            {STEPS.map((step, i) => (
+              <i
+                className="c2proc__node"
+                key={step.at}
+                data-on="off"
+                data-past={i < reached}
+                style={{ left: `${step.nx}%`, top: `${step.ny}%` }}
+                ref={(el) => {
+                  nodes.current[i] = el
+                }}
+              />
+            ))}
+          </div>
+
+          <ol className="c2proc__steps">
+            {PROCESS.map((step, i) => (
+              <li
+                className="c2proc__step"
+                key={step.id}
+                data-on="off"
+                data-past={i < reached}
+                style={{ '--i': i, '--bx': STEPS[i].bx, '--by': `${100 - STEPS[i].ny}%` }}
+                ref={(el) => {
+                  steps.current[i] = el
+                }}
+              >
+                <p className="c2proc__index">{step.index}</p>
+                <h3 className="c2proc__name">
+                  <span>{step.title}</span>
+                </h3>
+                <p className="c2proc__copy">{step.body}</p>
+                <ul className="c2proc__terms">
+                  {step.terms.map((term, k) => (
+                    <li key={term} style={{ '--k': k }}>
+                      {term}
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ol>
+        </div>
       </div>
     </section>
   )

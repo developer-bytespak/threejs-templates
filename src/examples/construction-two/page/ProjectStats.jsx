@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
 import { STATS } from './content.js'
 import { usePointerField, useScrollLink } from './scroll.js'
+import { sound } from '../audio/AudioManager.js'
+import { useThresholds } from '../audio/useAudio.js'
 
 /**
  * Credibility set as figures rather than as cards — now with the cursor
@@ -50,10 +52,27 @@ function Stat({ stat, index, accented, onEnter }) {
   )
 }
 
+// Where each figure has finished filling. Matches the CSS: `--r` for stat i
+// completes at 0.1 + i * 0.055 + 0.2.
+const RESOLVE_AT = STATS.map((_, i) => 0.3 + i * 0.055)
+
 function ProjectStats() {
   const ref = useRef(null)
   const [hovered, setHovered] = useState(-1)
-  useScrollLink(ref, 'cross')
+
+  /**
+   * One measurement click per figure, as it finishes resolving — not per
+   * digit. A counter that ticks audibly is a slot machine; an instrument
+   * coming to rest on a reading is what this section is about.
+   *
+   * The four are pitched apart by a small interval so they read as one
+   * instrument taking four readings rather than four unrelated clicks.
+   */
+  const onProgress = useThresholds(RESOLVE_AT, (i) => {
+    sound('stat.resolve', { step: i, rate: 1 + i * 0.02 })
+  })
+
+  useScrollLink(ref, 'cross', onProgress)
 
   const accentOn = hovered < 0 ? RESTING_ACCENT : hovered
 

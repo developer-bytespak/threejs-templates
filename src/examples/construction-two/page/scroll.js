@@ -39,6 +39,7 @@ const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v)
 
 const items = new Set()
 let lenis = null
+let locked = false
 let frame = 0
 let bound = false
 let lastY = 0
@@ -157,6 +158,11 @@ export function useLenis(reduced) {
     lastY = scrollY
     lastT = performance.now()
 
+    // The loader usually locks the page before this effect runs, so a Lenis
+    // created now has to be born stopped. Without this the panel is up and the
+    // wheel still moves the page behind it.
+    if (locked) lenis.stop()
+
     // Start the loop immediately rather than waiting for an event: from here
     // on it is the thing that drives Lenis, not the other way round.
     request()
@@ -169,6 +175,24 @@ export function useLenis(reduced) {
       request()
     }
   }, [reduced])
+}
+
+/**
+ * Hold the page still, and let it go again.
+ *
+ * Two mechanisms, because there are two ways this page scrolls. Lenis owns the
+ * wheel when it is mounted, and `stop()` is the only thing it listens to. With
+ * reduced motion there is no Lenis at all and the browser scrolls natively, so
+ * the class carries an `overflow: hidden` for that case. Both are set either
+ * way: it is one call, and the alternative is a lock that silently does
+ * nothing on somebody's machine.
+ */
+export function lockScroll(on) {
+  locked = !!on
+  document.documentElement.classList.toggle('c2-locked', locked)
+  if (!lenis) return
+  if (locked) lenis.stop()
+  else lenis.start()
 }
 
 /** Jump or glide to an absolute document position. */

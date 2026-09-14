@@ -2,6 +2,8 @@ import { useRef } from 'react'
 import { STATEMENT } from './content.js'
 import { StructuralFrame } from './ScrollDrawings.jsx'
 import { useScrollLink } from './scroll.js'
+import { sound } from '../audio/AudioManager.js'
+import { useThresholds } from '../audio/useAudio.js'
 
 /**
  * The page stops talking about itself for a moment.
@@ -15,9 +17,33 @@ import { useScrollLink } from './scroll.js'
  * order a building actually goes up. The words are about what happens after
  * the drawing leaves the desk; the drawing beside them is what leaves.
  */
+/**
+ * The frame going up, in sound.
+ *
+ * The marks sit a little past the middle of each group's draw slice — the
+ * groups are declared in page.css at 0.06, 0.20, 0.34, 0.48 and 0.62, each
+ * taking about 0.16 to complete — because a line is most convincing when it
+ * has visibly arrived rather than when it has started.
+ *
+ * The material changes as the building does, which is the whole idea: a light
+ * tick for setting out, a structural tap for columns, mass for the plates,
+ * metal for the envelope, then the dimensions as another light tick, and one
+ * quiet resolution when the sheet is finished. It gets denser, not louder.
+ */
+const FRAME_MARKS = [0.16, 0.30, 0.44, 0.58, 0.73, 0.84]
+const FRAME_SOUND = [
+  'frame.datum',
+  'frame.columns',
+  'frame.beams',
+  'frame.envelope',
+  'frame.datum',
+  'frame.done',
+]
+
 function EditorialStatement() {
   const ref = useRef(null)
-  useScrollLink(ref, 'cross')
+  const onProgress = useThresholds(FRAME_MARKS, (i) => sound(FRAME_SOUND[i]))
+  useScrollLink(ref, 'cross', onProgress)
 
   return (
     <section className="c2say" id="statement" data-zone="dark" ref={ref} aria-label="Statement">

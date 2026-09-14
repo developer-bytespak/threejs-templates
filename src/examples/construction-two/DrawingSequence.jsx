@@ -71,9 +71,11 @@ const STAGE_OPACITY = {
 // clearly readable underneath — that relationship is the whole point.
 const UNDER_BUILDING = 0.52
 
-function DrawingSequence({ input, reducedMotion }) {
+function DrawingSequence({ input, reducedMotion, onPen = null }) {
   const { drawing } = useRoomModel()
   const penRef = useRef()
+  // Which stroke the pen was on last frame, for the audio layer. -1 is up.
+  const penOrd = useRef(-1)
 
   const rig = useMemo(() => {
     if (!drawing?.stages?.size) return null
@@ -89,6 +91,8 @@ function DrawingSequence({ input, reducedMotion }) {
 
     const stages = []
     let totalLength = 0
+    // A stable id per stroke, in pen order, across every stage.
+    let ord = 0
 
     for (const stage of DRAWING_STAGES) {
       const mesh = drawing.stages.get(stage.stage)
@@ -141,6 +145,7 @@ function DrawingSequence({ input, reducedMotion }) {
       // Walk the strokes in pen order and hand each one a slot proportional to
       // its length.
       const path = orderStrokes(stage.payload.strokes, pen)
+      for (const s of path) s.ord = ord++
       const slotTotal = path.reduce((sum, s) => sum + Math.max(s.length, 0.004), 0)
       let run = 0
       for (const s of path) {
@@ -212,12 +217,32 @@ function DrawingSequence({ input, reducedMotion }) {
       if (material.uniforms?.uOpacity) material.uniforms.uOpacity.value = o
     }
 
+    const drawingLive =
+      progress > DRAWING_BEGIN && progress < DRAWING_END + 0.004 && !reducedMotion
+
+    // --- the pen, for anyone listening
+    //
+    // Reported as transitions rather than as a per-frame position: the nib
+    // touching down, moving to a new line, and lifting. That is the rhythm a
+    // drawing actually has, and it is what lets the sound follow the drawing
+    // instead of running underneath it. Nothing visual reads this, and with no
+    // listener attached the whole block costs one comparison.
+    if (onPen) {
+      const nowOrd = drawingLive && penStroke ? penStroke.ord : -1
+      if (nowOrd !== penOrd.current) {
+        onPen({
+          ord: nowOrd,
+          was: penOrd.current,
+          length: penStroke ? penStroke.length : 0,
+          span: penStroke ? penStroke.to - penStroke.from : 0,
+        })
+        penOrd.current = nowOrd
+      }
+    }
+
     // --- the drawing head
     const head = penRef.current
     if (!head) return
-
-    const drawingLive =
-      progress > DRAWING_BEGIN && progress < DRAWING_END + 0.004 && !reducedMotion
 
     if (!drawingLive) {
       head.visible = false

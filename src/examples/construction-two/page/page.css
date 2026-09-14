@@ -62,6 +62,12 @@ html.lenis body { height: auto; }
 .lenis.lenis-stopped { overflow: hidden; }
 .lenis.lenis-smooth iframe { pointer-events: none; }
 
+/* Held still while the loader is up. Lenis has its own stop() and its own
+   class for this, but with reduced motion there is no Lenis at all and the
+   browser is scrolling natively — this is the half that covers that case. */
+html.c2-locked,
+html.c2-locked body { overflow: hidden; }
+
 .c2page ::selection { background: var(--blue); color: #fff; }
 
 .c2page :focus-visible {
@@ -303,6 +309,10 @@ html.lenis body { height: auto; }
   background: var(--nav-line);
   transition: background-color 0.7s var(--ease);
 }
+
+/* The rule before the sound control. Shorter than the one before the call to
+   action, because it is separating off something smaller. */
+.c2nav__sep[data-quiet='true'] { height: 8px; opacity: 0.6; }
 
 /* The one item at full strength. It earns its emphasis from weight and colour
    rather than from a box — a line of type with an arrow, which is as far as
@@ -1558,6 +1568,237 @@ html.lenis body { height: auto; }
   justify-content: center;
 }
 
+/* ================================================================ loader */
+/* The title block.
+
+   A drawing announces itself in a corner — sheet, revision, scale — and this
+   is the same object rather than a spinner, which this page has no vocabulary
+   for. The wordmark is set at the navbar's exact coordinates, so when the
+   panel lifts, the bar underneath is already where the eye last saw it, and
+   the count is set as a dimension against the rule it measures.
+
+   `--v` is 0..1, written from JS once a frame. The fill is a scaleX of it and
+   carries no transition of its own: the easing already happened in the loop
+   that wrote the number, and smoothing it twice makes the bar lag the count
+   it is supposed to agree with. */
+.c2load {
+  --v: 0;
+
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  /* Two rows, not three. The grid layer is absolutely positioned and so takes
+     no track of its own — a third `auto` left the block sitting at the top of
+     the middle row instead of at the foot of the sheet, which is the one place
+     a title block never is. */
+  grid-template-rows: auto 1fr;
+  background: var(--dark);
+  color: var(--on-dark);
+  font-family: var(--sans);
+  transform: translate3d(0, 0, 0);
+  transition: transform 1s var(--ease);
+  will-change: transform;
+}
+
+/* 101% rather than 100%: a fractional device pixel at the bottom edge is a
+   bright hairline across the top of the hero on exactly the displays nobody
+   tests on. */
+.c2load[data-phase='leave'] { transform: translate3d(0, -101%, 0); }
+
+.c2load__grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(241, 236, 226, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(241, 236, 226, 0.045) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(130% 95% at 50% 38%, #000 25%, transparent 100%);
+  mask-image: radial-gradient(130% 95% at 50% 38%, #000 25%, transparent 100%);
+}
+
+/* ---- the head, sitting exactly where the navbar will be */
+.c2load__head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(16px, 3vw, 48px);
+  padding: clamp(21px, 2.6vw, 33px) clamp(22px, 5.4vw, 92px);
+}
+
+.c2load__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  font-size: 0.6875rem;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.c2load__brand b {
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--on-dark);
+}
+
+.c2load__brand i {
+  width: 1px;
+  height: 10px;
+  background: var(--on-dark-30);
+}
+
+.c2load__brand span {
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  color: var(--on-dark-58);
+}
+
+.c2load__state {
+  font-size: 0.625rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--on-dark-40);
+}
+
+/* ---- the block, read as a dimension: figure, then the rule it measures */
+.c2load__block {
+  position: relative;
+  align-self: end;
+  /* The home indicator sits over the last ~20px on a modern phone, and the
+     stage label is the thing it would sit on. */
+  padding: 0 var(--gut)
+    max(clamp(24px, 4vw, 54px), env(safe-area-inset-bottom, 0px) + 22px);
+  transition: opacity 0.4s var(--ease);
+}
+
+.c2load[data-phase='leave'] .c2load__block { opacity: 0; }
+
+.c2load__count {
+  display: flex;
+  /* On the baseline, like a dimension's unit. Hung off the top it read as a
+     superscript, which is a different typographic claim entirely. */
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.1em;
+  font-size: clamp(58px, 11.5vw, 172px);
+  font-weight: 400;
+  line-height: 0.82;
+  letter-spacing: -0.05em;
+  /* Tabular, or the whole figure shuffles sideways on every tick. */
+  font-variant-numeric: tabular-nums;
+  color: var(--on-dark);
+}
+
+.c2load__count em {
+  font-size: 0.17em;
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  color: var(--on-dark-40);
+}
+
+.c2load__track {
+  position: relative;
+  margin-top: clamp(16px, 2vw, 30px);
+  height: 1px;
+  background: var(--on-dark-14);
+}
+
+.c2load__fill {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  transform: scaleX(var(--v));
+  transform-origin: left center;
+}
+
+.c2load__foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 13px;
+  font-size: 0.625rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--on-dark-40);
+}
+
+.c2load__foot span:first-child { color: var(--on-dark-72); }
+
+/* Reduced motion gets the same information and none of the travel. */
+.c2load[data-reduced='true'] {
+  transition: opacity 0.22s linear;
+  will-change: opacity;
+}
+
+.c2load[data-reduced='true'][data-phase='leave'] {
+  transform: none;
+  opacity: 0;
+}
+
+.c2load[data-reduced='true'] .c2load__block { transition: none; }
+.c2load[data-reduced='true'][data-phase='leave'] .c2load__block { opacity: 1; }
+
+@media (max-width: 760px) {
+  .c2load__count { font-size: clamp(54px, 21vw, 104px); }
+  .c2load__foot { letter-spacing: 0.16em; }
+  .c2load__foot span:last-child { display: none; }
+}
+
+/* ================================================================= sound */
+/* A small level meter and a word, last in the bar, past the call to action.
+
+   It used to lead the right-hand group, where an icon-plus-word at the head of
+   a row of plain words read as a second wordmark rather than as a control. At
+   the trailing edge, behind its own rule, it reads as what it is: a switch.
+
+   Off, the bars are flat — a meter showing nothing, which is what is
+   happening. On, they step into a silhouette and the second one takes the
+   accent. The state lives in the glyph, so the label never changes length and
+   the bar never reflows when you press it. */
+.c2snd {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: inherit;
+  font-size: 0.625rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--nav-dim);
+  opacity: 0.85;
+  transition: color 0.4s ease, opacity 0.4s ease;
+}
+
+.c2snd:hover,
+.c2snd:focus-visible,
+.c2snd[data-on='true'] { color: var(--nav-ink); opacity: 1; }
+
+.c2snd__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 9px;
+}
+
+.c2snd__bars i {
+  display: block;
+  width: 1.5px;
+  height: 1.5px;
+  background: currentColor;
+  transition: height 0.4s var(--ease), background-color 0.4s ease;
+}
+
+/* Staggered, so it reads as a level rather than as a bar chart. */
+.c2snd[data-on='true'] .c2snd__bars i:nth-child(1) { height: 4px; }
+.c2snd[data-on='true'] .c2snd__bars i:nth-child(2) { height: 9px; background: var(--accent); }
+.c2snd[data-on='true'] .c2snd__bars i:nth-child(3) { height: 6px; }
+.c2snd[data-on='true'] .c2snd__bars i:nth-child(4) { height: 3px; }
+
 /* ================================================================ footer */
 .c2foot {
   position: relative;
@@ -1640,6 +1881,35 @@ html.lenis body { height: auto; }
 
 .c2foot__legal { text-transform: none; letter-spacing: 0.04em; }
 
+/* The mute, set as one more item in the footer's utility line rather than as
+   a control floating over the page. Same size, same tracking, same colour as
+   its neighbours; the dot is the only thing marking it as interactive. */
+.c2foot__sound {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: inherit;
+  font-size: 0.5625rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--on-dark-30);
+  transition: color 0.4s ease;
+}
+
+.c2foot__sound::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  transition: background-color 0.35s ease;
+}
+
+.c2foot__sound[aria-pressed='true']::before { background: currentColor; }
+
+.c2foot__sound:hover,
+.c2foot__sound:focus-visible { color: var(--on-dark); }
+
 /* ============================================================ responsive */
 /* The choreography is the same at every width. What changes is how much
    lateral travel the layout can afford: a 12vw frame growth that reads as
@@ -1677,6 +1947,11 @@ html.lenis body { height: auto; }
   .c2nav__links,
   .c2nav__sep,
   .c2nav__cta { display: none; }
+
+  /* Width is scarce here, and the bars already say what the word says. */
+  .c2snd__label { display: none; }
+  /* Nothing left to its right but the menu trigger, so it takes its own gap. */
+  .c2snd { margin-right: 14px; opacity: 1; }
 
   .c2nav__trigger {
     display: inline-flex;

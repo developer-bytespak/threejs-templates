@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef } from 'react'
 import { BRAND, CTA } from './content.js'
 import { SitePlan } from './ScrollDrawings.jsx'
 import { scrollToEl, usePointerField, useScrollLink, usePrefersReducedMotion } from './scroll.js'
+import { sound } from '../audio/AudioManager.js'
+import { useThresholds } from '../audio/useAudio.js'
 
 /**
  * The close.
@@ -24,7 +26,20 @@ function FinalProjectCTA() {
   const planRef = useRef(null)
   const reduced = usePrefersReducedMotion()
 
-  useScrollLink(ref, 'cross')
+  /**
+   * One sound in the whole section.
+   *
+   * This is the end of the page and the resolution of an hour of drawing, so
+   * the temptation is to mark it. The opposite is correct: everything above
+   * has been building density, and the only thing that can read as an ending
+   * after that is a single quiet tone when the site plan closes — no impact,
+   * no confirmation chime, nothing that sounds like a notification.
+   *
+   * Fired when the survey mark has settled, which is the last stroke drawn.
+   */
+  const onProgress = useThresholds([0.88], () => sound('plan.done'))
+
+  useScrollLink(ref, 'cross', onProgress)
   usePointerField(planRef, { enabled: !reduced, damp: 0.1 })
 
   useEffect(() => {

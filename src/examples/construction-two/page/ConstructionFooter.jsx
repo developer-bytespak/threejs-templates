@@ -1,15 +1,13 @@
 import { useCallback } from 'react'
 import { BRAND, FOOTER } from './content.js'
-import { usePrefersReducedMotion } from './scroll.js'
+import { scrollToEl, usePrefersReducedMotion } from './scroll.js'
 
 function ConstructionFooter() {
   const reduced = usePrefersReducedMotion()
 
   const go = useCallback(
     (id) => {
-      document
-        .getElementById(id)
-        ?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })
+      scrollToEl(document.getElementById(id), reduced)
     },
     [reduced],
   )

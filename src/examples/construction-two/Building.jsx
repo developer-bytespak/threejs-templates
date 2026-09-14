@@ -164,7 +164,7 @@ function stepPiece(piece, local, reducedMotion) {
  * takes the building apart again — the solid shrinks back onto its own
  * footprint and the cage retracts, neither of them moving off the volume.
  */
-function Building({ input, reducedMotion }) {
+function Building({ input, reducedMotion, onPiece = null }) {
   const { building } = useRoomModel()
 
   const pieces = useMemo(() => {
@@ -265,6 +265,7 @@ function Building({ input, reducedMotion }) {
   useFrame(() => {
     const progress = input.current.progress
     let active = -1
+    let standing = 0
 
     for (const piece of pieces) {
       const local = clamp01((progress - piece.start) / piece.duration)
@@ -273,9 +274,35 @@ function Building({ input, reducedMotion }) {
       // ref the scroll uses rather than to React state — the phase rail reads it
       // on its own rAF and only re-renders when the number changes.
       if (local > 0.04 && piece.phase > active) active = piece.phase
+      standing += local
+
+      // A piece arriving or leaving, for anyone listening. Arrival is
+      // reported at 0.72 rather than at 1: a piece that has travelled three
+      // quarters of the way down has visually landed, and waiting for the
+      // last few per cent of an eased curve puts the sound noticeably after
+      // the event. Departure is reported at 0.55, once it has clearly
+      // detached.
+      if (onPiece) {
+        // A latch with a wide band, not a threshold. A bare `local >= 0.72`
+        // retriggers on every frame the scroll jitters across that value,
+        // which at the top of a damped ease is most of them. It arms again
+        // only once the piece is well back off its mark — and going back the
+        // other way is an event too: the piece is leaving.
+        if (!piece.landed && local >= 0.72) {
+          piece.landed = true
+          onPiece(piece.phase, true)
+        } else if (piece.landed && local < 0.55) {
+          piece.landed = false
+          onPiece(piece.phase, false)
+        }
+      }
     }
 
     input.current.buildPhase = active
+    // How much of the building is standing, 0..1. The audio bed reads this;
+    // it is a sum of eased per-piece progress, so it thickens as the structure
+    // does rather than tracking the scroll bar.
+    input.current.buildDensity = pieces.length ? standing / pieces.length : 0
   })
 
   return null

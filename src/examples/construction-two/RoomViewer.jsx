@@ -1,6 +1,5 @@
 import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { useProgress } from '@react-three/drei'
 import * as THREE from 'three'
 import Room from './Room.jsx'
 import Building from './Building.jsx'
@@ -9,7 +8,10 @@ import CinematicCamera from './CinematicCamera.jsx'
 import ConstructionAnnotations from './ConstructionAnnotations.jsx'
 import ConstructionStoryUI from './ConstructionStoryUI.jsx'
 import ConstructionProgress from './ConstructionProgress.jsx'
-import { STORY_CHAPTERS, chapterAt } from './story.js'
+import { BUILD_PHASES, BUILD_START, STORY_CHAPTERS, chapterAt } from './story.js'
+import SceneAudio from './audio/SceneAudio.jsx'
+import { assemblyLevel, sound } from './audio/AudioManager.js'
+import { useSoundOnChange } from './audio/useAudio.js'
 import './RoomViewer.css'
 
 function usePrefersReducedMotion() {
@@ -74,21 +76,6 @@ function ScrollEase({ input, reducedMotion }) {
   return null
 }
 
-function LoadingOverlay() {
-  const { active, progress } = useProgress()
-  if (!active && progress === 100) return null
-
-  return (
-    <div className="viewer-overlay">
-      <p className="viewer-overlay__label">Preconstruction studio</p>
-      <div className="viewer-overlay__track">
-        <div className="viewer-overlay__bar" style={{ width: `${progress}%` }} />
-      </div>
-      <p className="viewer-overlay__value">{Math.round(progress)}%</p>
-    </div>
-  )
-}
-
 /**
  * The opening film.
  *
@@ -126,6 +113,87 @@ function RoomViewer({ hostRef = null, standalone = false }) {
     pointerY: 0,
     buildPhase: -1,
   })
+
+  /**
+   * The film's audio.
+   *
+   * A chapter change is a cut, and a cut in this film is a sheet being moved
+   * on a desk and the camera finding its next position. Both of those, two
+   * hundred milliseconds apart, and nothing else — no sound is attached to
+   * camera movement itself, only to the moment it starts.
+   *
+   * Each chapter gets its own colour rather than the same sample six times:
+   * the paper alternates between being placed and being slid, and the rate
+   * walks up a little through the film so the last chapter does not sound
+   * like the first.
+   */
+  useSoundOnChange(chapter.index, (index) => {
+    const rate = 1 + (index - 3) * 0.035
+    sound(index === 1 ? 'card.place' : index % 2 ? 'hero.chapter' : 'hero.chapter.alt', { rate })
+    sound('hero.camera', { delay: 0.05, rate })
+    sound('hero.air', { delay: 0.12, rate })
+  })
+
+  /**
+   * The pen. DrawingSequence reports the nib landing, crossing to a new line,
+   * and lifting; this turns that into graphite.
+   *
+   * Short strokes get a tick rather than a stroke sound — in a drawing this
+   * dense the short ones are dimension ticks and arrowheads, and they should
+   * sound like the pen being set down and lifted, not like a line being
+   * pulled. Everything else gets a grain of pencil whose length follows the
+   * length of the line being drawn.
+   *
+   * The pen lifting is silent on purpose. The gap between strokes is what
+   * makes the rest read as drawing rather than as texture.
+   */
+  const onPen = useCallback(({ ord, was, length }) => {
+    if (ord < 0) return
+    if (was < 0) {
+      sound('pen.down')
+      return
+    }
+    if (length < 0.02) sound('pen.corner')
+    else sound('pen.stroke', { dur: Math.min(0.06 + length * 1.6, 0.22) })
+  }, [])
+
+  /**
+   * The building going up.
+   *
+   * Every piece that lands makes a sound, in the material of its own phase —
+   * mass for the foundation, a tap for the structure, metal for the envelope,
+   * a small tick for the last fittings. Thirteen of them across a fifth of the
+   * film, on a 70ms cooldown so a fast scroll thickens the texture instead of
+   * machine-gunning it.
+   *
+   * The first piece of each phase is the accent, 7 dB above the rest, which
+   * gives the run its punctuation without anything having to be loud.
+   * Everything after it in that phase is quiet — density, not volume.
+   *
+   * Scrolling back reports the same pieces leaving, and those get their own
+   * voice rather than the landing played backwards. See `release` in
+   * voices.js for why that distinction is worth a separate voice.
+   */
+  const phaseSeen = useRef(new Set())
+  const onPiece = useCallback((phase, landing) => {
+    const key = BUILD_PHASES[phase]?.key
+    if (!key) return
+
+    // Coming apart. One sound for every phase, pitched by which phase it is
+    // so fourteen releases are not fourteen identical ticks, and no accents —
+    // scrolling back is undoing, not a second performance.
+    if (!landing) {
+      sound('piece.lift', { rate: 1.14 - phase * 0.07 })
+      return
+    }
+
+    if (phaseSeen.current.has(phase)) {
+      sound(`piece.${key}`)
+    } else {
+      phaseSeen.current.add(phase)
+      sound(`build.${key}`)
+    }
+  }, [])
 
   const measure = useCallback(() => {
     const host = hostRef?.current
@@ -183,6 +251,10 @@ function RoomViewer({ hostRef = null, standalone = false }) {
       if (step === lastStep) return
       lastStep = step
 
+      // Scrolling back out of the build re-arms the phase accents, so coming
+      // forward again sounds like the first time rather than like a rerun.
+      if (p < BUILD_START && phaseSeen.current.size) phaseSeen.current.clear()
+
       setProgress(p)
       setChapter((was) => {
         const next = chapterAt(p)
@@ -205,6 +277,19 @@ function RoomViewer({ hostRef = null, standalone = false }) {
       removeEventListener('pointermove', onPointerMove)
     }
   }, [measure])
+
+  /**
+   * The hero leaving takes the assembly bed with it.
+   *
+   * The bed is driven from inside the Canvas, and the Canvas stops rendering
+   * when the hero is off screen — so scrolling out of the film part-way
+   * through the build would leave a low sustained voice holding its last
+   * level over the rest of the page, with nothing left running to turn it
+   * down. It comes back on its own when the frame loop does.
+   */
+  useEffect(() => {
+    if (!live) assemblyLevel(0)
+  }, [live])
 
   // Stop drawing once the hero is well clear of the viewport, and start again
   // before it comes back. The scene is never unmounted, so the GLB is parsed
@@ -248,10 +333,11 @@ function RoomViewer({ hostRef = null, standalone = false }) {
 
           <Suspense fallback={null}>
             <Room />
-            <DrawingSequence input={input} reducedMotion={reducedMotion} />
-            <Building input={input} reducedMotion={reducedMotion} />
+            <DrawingSequence input={input} reducedMotion={reducedMotion} onPen={onPen} />
+            <Building input={input} reducedMotion={reducedMotion} onPiece={onPiece} />
             <ConstructionAnnotations chapter={chapter} progress={progress} />
             <CinematicCamera input={input} reducedMotion={reducedMotion} />
+            <SceneAudio input={input} enabled={live} />
           </Suspense>
         </Canvas>
 
@@ -267,7 +353,6 @@ function RoomViewer({ hostRef = null, standalone = false }) {
         <ConstructionProgress active={chapter} progress={progress} />
       </div>
 
-      <LoadingOverlay />
     </>
   )
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BRAND, NAV_CTA, NAV_LINKS } from './content.js'
-import { usePrefersReducedMotion } from './scroll.js'
+import { scrollToEl, scrollToY, usePrefersReducedMotion } from './scroll.js'
+import SoundButton from '../audio/SoundButton.jsx'
 
 /**
  * The navigation, and the one element that has to survive every surface on the
@@ -24,12 +25,7 @@ const LINE = 70          // the bar's baseline: the y the zone test is taken at
 const SCROLLED = 40      // past this the bar compacts and earns its backdrop
 
 function scrollToId(id, reduced) {
-  const el = document.getElementById(id)
-  if (!el) return
-  el.scrollIntoView({
-    behavior: reduced ? 'auto' : 'smooth',
-    block: 'start',
-  })
+  scrollToEl(document.getElementById(id), reduced)
 }
 
 function ConstructionNav() {
@@ -107,7 +103,7 @@ function ConstructionNav() {
           href="#top"
           onClick={(e) => {
             e.preventDefault()
-            scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' })
+            scrollToY(0, reduced)
           }}
         >
           <span className="c2nav__mark">{BRAND.mark}</span>
@@ -134,6 +130,12 @@ function ConstructionNav() {
             <span>{NAV_CTA.label}</span>
             <i aria-hidden="true">↗</i>
           </button>
+
+          {/* Last, past the call to action: a utility switch, not part of the
+              navigation. Leading the bar it read as a second wordmark. */}
+          <i className="c2nav__sep" aria-hidden="true" data-quiet="true" />
+
+          <SoundButton />
 
           <button
             className="c2nav__trigger"

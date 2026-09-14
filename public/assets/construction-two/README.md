@@ -6,6 +6,30 @@ every image slot resolves to a drawn architectural plate until the file exists,
 and swaps to the photograph the moment it does. No code change, no rebuild
 logic: the filename is the contract.
 
+## The quick way
+
+`tools/fetch_construction_photos.py` fills these slots from the Pexels API.
+
+```
+pip install Pillow
+set PEXELS_API_KEY=your_key          # or $env:… in PowerShell, export … in bash
+python tools/fetch_construction_photos.py --dry-run
+python tools/fetch_construction_photos.py
+```
+
+A free key takes about a minute at https://www.pexels.com/api/. The script
+searches per slot, drops anything whose description mentions workers, hard
+hats, handshakes or people smiling at camera, crops to 3:2 around a per-slot
+bias, writes 2000×1400 plus the `@1x` half-size the srcset wants, and records
+what it took in `CREDITS.md`.
+
+It never overwrites a slot that already has a file, so you can fill them one at
+a time, and a slot it misses simply keeps its drawing. Look at the results
+before you ship: `--list the-atrium` prints the ranked alternatives and
+`--only the-atrium --pick 3 --force` swaps one out.
+
+## The manual way
+
 Drop files in at exactly these paths, relative to this folder.
 
 ## Selected work — the four project photographs

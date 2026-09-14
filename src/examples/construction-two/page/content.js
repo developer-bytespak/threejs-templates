@@ -14,9 +14,9 @@ export const BRAND = {
 
 export const NAV_LINKS = [
   { id: 'work', label: 'Projects', target: 'selected-work' },
-  // The standalone capabilities section was removed; the capability content
-  // that survived lives in the Approach sequence, so the item points there.
-  { id: 'capabilities', label: 'Capabilities', target: 'process' },
+  // No Capabilities item: the standalone section was removed and what survived
+  // of it lives in the Approach sequence, so the two items pointed at the same
+  // place and the bar listed one destination twice.
   { id: 'approach', label: 'Approach', target: 'process' },
   { id: 'about', label: 'About', target: 'statement' },
 ]
@@ -220,3 +220,30 @@ export const FOOTER = {
   locations: ['Karachi', 'International'],
   legal: '© 2026 Bytes Construction. Template content — replace before release.',
 }
+
+/* ------------------------------------------------------------- preloading
+ *
+ * Every photograph the page will ask for, in the shape the preloader needs.
+ *
+ * Derived from the lists above rather than written out a second time, so a
+ * project added to PROJECTS or a frame added to FILM_FRAMES is preloaded
+ * without anyone having to remember this exists.
+ *
+ * `srcSet` and `sizes` mirror ProjectMedia exactly. The browser chooses a
+ * candidate from those two, so warming a different candidate than the page
+ * later asks for would download the picture twice and hold the loader up for
+ * a file nothing uses. The strip repeats its frames and two of them point at
+ * the same file, hence the dedupe.
+ */
+const SIZES = '(max-width: 760px) 92vw, 60vw'
+
+export const SITE_IMAGES = [
+  ...PROJECTS.map((p) => ({
+    src: p.image,
+    srcSet: p.imageSmall ? `${p.imageSmall} 1000w, ${p.image} 2000w` : undefined,
+    sizes: SIZES,
+  })),
+  ...[...new Set(FILM_FRAMES.map((f) => f.image))]
+    .filter((src) => !PROJECTS.some((p) => p.image === src))
+    .map((src) => ({ src })),
+]

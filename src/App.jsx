@@ -34,7 +34,10 @@ function App() {
         path="/construction-two"
         element={
           <ExampleFrame title="Construction Two">
-            <Suspense fallback={null}>
+            {/* The route's own loader cannot paint until this chunk has
+                arrived, and the default white behind it is a flash straight
+                into a dark page. One filled rectangle closes that gap. */}
+            <Suspense fallback={<div style={{ position: 'fixed', inset: 0, background: '#0b0d10' }} />}>
               <ConstructionTwo />
             </Suspense>
           </ExampleFrame>

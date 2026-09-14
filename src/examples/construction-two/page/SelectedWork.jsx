@@ -2,6 +2,8 @@ import { useCallback, useRef, useState } from 'react'
 import ProjectMedia from './ProjectMedia.jsx'
 import { PROJECTS } from './content.js'
 import { useScrollLink } from './scroll.js'
+import { sound } from '../audio/AudioManager.js'
+import { useSoundOnChange } from '../audio/useAudio.js'
 
 /**
  * The portfolio: four projects through one frame, each one physically taking
@@ -41,7 +43,18 @@ function SelectedWork() {
   const indexRef = useRef(null)
   const [active, setActive] = useState(0)
 
+  const entered = useRef(false)
+
   const onProgress = useCallback((p) => {
+    // The character changes here: the studio is behind us and this is the
+    // portfolio. One sheet moved, once, on the way in.
+    if (!entered.current && p > 0.01) {
+      entered.current = true
+      sound('work.enter')
+    } else if (entered.current && p <= 0.002) {
+      entered.current = false
+    }
+
     const n = PROJECTS.length
     // The last 12% is the run-out into the stats rule, so the projects finish
     // before the section does.
@@ -66,6 +79,23 @@ function SelectedWork() {
   }, [])
 
   useScrollLink(sectionRef, 'pin', onProgress)
+
+  /**
+   * A project handing over to the next one.
+   *
+   * Two layers, forty milliseconds apart: air for the frame travelling, and a
+   * single soft structural tap underneath it for the frame arriving. That is
+   * deliberately not a whoosh — a whoosh says "transition", and what this
+   * should say is that something physical was moved and set down, the way a
+   * page in a portfolio is turned rather than swiped.
+   *
+   * The first project does not announce itself. It is already on screen when
+   * the section begins, so a sound for it would be a sound for nothing.
+   */
+  useSoundOnChange(active, (index, was) => {
+    sound('work.change', { rate: 1 + (index - was) * 0.04 })
+    sound('work.change.body', { delay: 0.04 })
+  })
 
   return (
     <section

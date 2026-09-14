@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { PROCESS } from './content.js'
 import { useScrollLink } from './scroll.js'
+import { sound } from '../audio/AudioManager.js'
 
 /**
  * The approach, drawn as one route.
@@ -50,6 +51,31 @@ const TOTAL = 270
 /* Where the line arrives at each step, as a fraction of the whole route, and
    where that step's block is anchored. `nx`/`ny` are the node; the block sits
    on top of the landing that ends there. */
+/**
+ * What each stage sounds like when the line reaches it.
+ *
+ * The four are a sequence, not four instances of one click: the pencil that
+ * plans, the click of a connection being made, the tap of something
+ * structural going in, and a quiet resolution for handover. Played in order
+ * they describe the process the section is describing.
+ */
+const STEP_SOUND = [
+  'process.plan',
+  'process.coordinate',
+  'process.build',
+  'process.deliver',
+]
+
+/**
+ * Where the route finishes a vertical drop, as a fraction of its length.
+ *
+ * The four landings already sound — those are the stages. These are the three
+ * corners between them, and they get the quietest thing in the palette: a tick
+ * at -45 dBFS, which is the difference between a line that appears and a line
+ * that is being drawn by someone.
+ */
+const CORNERS = [62 / 270, 126 / 270, 200 / 270]
+
 const STEPS = [
   { at: 40 / TOTAL, nx: 40, ny: 26, bx: '2%' },
   { at: 104 / TOTAL, nx: 82, ny: 48, bx: '46%' },
@@ -84,12 +110,23 @@ function ProcessSection() {
   const nodes = useRef([])
   const [reached, setReached] = useState(-1)
 
+  const corners = useRef(CORNERS.map(() => true))
+
   const onProgress = useCallback((p) => {
     // The line is drawn across the middle of the pin's travel: it starts once
     // the heading has settled and finishes before the section hands over.
     const drawn = Math.max(0, Math.min((p - 0.1) / 0.72, 1))
     const el = ref.current
     if (el) el.style.setProperty('--drawn', drawn.toFixed(4))
+
+    for (let i = 0; i < CORNERS.length; i += 1) {
+      if (corners.current[i] && drawn >= CORNERS[i]) {
+        corners.current[i] = false
+        sound('draw.segment')
+      } else if (!corners.current[i] && drawn < CORNERS[i] - 0.02) {
+        corners.current[i] = true
+      }
+    }
 
     let at = -1
     for (let i = 0; i < STEPS.length; i += 1) {
@@ -98,8 +135,14 @@ function ProcessSection() {
       const state = on ? 'on' : 'off'
       const step = steps.current[i]
       const node = nodes.current[i]
+      // The sound fires on the node switching on, which is the frame the line
+      // physically reaches it — not on a timer, and not on the step becoming
+      // visible. Scrolling back re-arms it silently.
+      if (node && node.dataset.on !== state) {
+        if (on) sound(STEP_SOUND[i])
+        node.dataset.on = state
+      }
       if (step && step.dataset.on !== state) step.dataset.on = state
-      if (node && node.dataset.on !== state) node.dataset.on = state
     }
     setReached((was) => (was === at ? was : at))
   }, [])

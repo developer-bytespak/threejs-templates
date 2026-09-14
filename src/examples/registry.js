@@ -24,7 +24,7 @@ export const EXAMPLES = [
     title: 'Construction Two',
     tagline: 'An architect\u2019s office, late afternoon',
     description:
-      'A scroll-driven cinematic through a toon-shaded office. The camera moves between eight framed shots while the card model on the desk assembles itself \u2014 wireframe first, then solid.',
+      'A scroll-driven cinematic through a toon-shaded office. The camera moves between six framed shots while the card model on the desk assembles itself \u2014 wireframe first, then solid.',
     tags: ['glTF', 'Toon shading', 'Scroll camera', 'Cursor parallax'],
     poster: '/previews/construction-two.jpg',
     accent: '#0a1740',

@@ -1568,6 +1568,124 @@ html.c2-locked body { overflow: hidden; }
   justify-content: center;
 }
 
+/* =============================================================== entrance */
+/* The opening, held.
+
+   The hero's first chapter already animates itself in — the headline's lines
+   rise in turn, the working paper settles from the right, the chapter marker
+   lifts — and all of it used to run while the loader was still covering the
+   screen. The sequence was over before anyone saw it, so the page arrived
+   fully assembled.
+
+   None of that choreography is redefined here. These rules pin it at its first
+   frame for as long as `data-enter` is 'hold', with `transition: none` so that
+   entering the held state is instant and only leaving it animates. Releasing
+   the attribute hands every element back to the rule that already described
+   how it should appear, at its own timing and its own delay.
+
+   Specificity is deliberate: `.chapter[data-on='true'] .display span` is
+   (0,2,2) and lives in another stylesheet, so the holds carry an extra class
+   to be sure of out-ranking it wherever the two files end up in the bundle. */
+.c2page[data-enter='hold'] .story .chapter {
+  opacity: 0;
+  visibility: hidden;
+  transition: none;
+}
+
+.c2page[data-enter='hold'] .story .chapter .display span {
+  opacity: 0;
+  transform: translateY(0.28em);
+  transition: none;
+}
+
+.c2page[data-enter='hold'] .story .chapter .tracing {
+  opacity: 0;
+  transform: rotate(-0.7deg) translateY(14px);
+  transition: none;
+}
+
+.c2page[data-enter='hold'] .stage .chapmark {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: none;
+}
+
+.c2page[data-enter='hold'] .stage .phases { opacity: 0; transition: none; }
+.c2page[data-enter='in'] .stage .phases { transition: opacity 1.1s var(--ease) 0.25s; }
+
+/* ---- the navigation, which had no entrance of its own
+
+   Keyframes rather than transitions: the items already carry transitions for
+   colour, and a shorthand here would quietly replace them. An animation is a
+   separate channel and leaves them alone. */
+@keyframes c2enter {
+  from { opacity: 0; transform: translateY(9px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Hairlines draw themselves instead of fading. `both` leaves a transform of
+   scaleY(1), which is the identity — so unlike an opacity fill this cannot
+   strand the element at a value that overrides its own state styling. */
+@keyframes c2enterline {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+
+.c2page[data-enter='hold'] .c2nav__brand,
+.c2page[data-enter='hold'] .c2nav__links button,
+.c2page[data-enter='hold'] .c2nav__cta,
+.c2page[data-enter='hold'] .c2snd,
+.c2page[data-enter='hold'] .c2nav__trigger { opacity: 0; }
+
+.c2page[data-enter='hold'] .c2nav__sep { transform: scaleY(0); }
+
+.c2page[data-enter='in'] .c2nav__brand {
+  animation: c2enter 0.8s var(--ease) 0.3s both;
+}
+
+.c2page[data-enter='in'] .c2nav__links button {
+  animation: c2enter 0.8s var(--ease) both;
+}
+
+.c2page[data-enter='in'] .c2nav__links button:nth-child(1) { animation-delay: 0.4s; }
+.c2page[data-enter='in'] .c2nav__links button:nth-child(2) { animation-delay: 0.46s; }
+.c2page[data-enter='in'] .c2nav__links button:nth-child(3) { animation-delay: 0.52s; }
+
+.c2page[data-enter='in'] .c2nav__sep {
+  animation: c2enterline 0.5s var(--ease) 0.56s both;
+}
+
+.c2page[data-enter='in'] .c2nav__cta {
+  animation: c2enter 0.8s var(--ease) 0.6s both;
+}
+
+.c2page[data-enter='in'] .c2snd {
+  animation: c2enter 0.8s var(--ease) 0.68s both;
+}
+
+.c2page[data-enter='in'] .c2nav__trigger {
+  animation: c2enter 0.8s var(--ease) 0.4s both;
+}
+
+/* Reduced motion gets the page, not the performance. Everything is simply
+   there — held at zero for a moment and then present, with no travel. */
+@media (prefers-reduced-motion: reduce) {
+  .c2page[data-enter='in'] .c2nav__brand,
+  .c2page[data-enter='in'] .c2nav__links button,
+  .c2page[data-enter='in'] .c2nav__cta,
+  .c2page[data-enter='in'] .c2snd,
+  .c2page[data-enter='in'] .c2nav__trigger,
+  .c2page[data-enter='in'] .c2nav__sep { animation: none; }
+
+  .c2page[data-enter='hold'] .c2nav__brand,
+  .c2page[data-enter='hold'] .c2nav__links button,
+  .c2page[data-enter='hold'] .c2nav__cta,
+  .c2page[data-enter='hold'] .c2snd,
+  .c2page[data-enter='hold'] .c2nav__trigger { opacity: 1; }
+
+  .c2page[data-enter='hold'] .c2nav__sep { transform: none; }
+}
+
 /* ================================================================ loader */
 /* The title block.
 
@@ -1749,55 +1867,164 @@ html.c2-locked body { overflow: hidden; }
 }
 
 /* ================================================================= sound */
-/* A small level meter and a word, last in the bar, past the call to action.
+/* An icon button, last in the bar, past the call to action.
 
-   It used to lead the right-hand group, where an icon-plus-word at the head of
-   a row of plain words read as a second wordmark rather than as a control. At
-   the trailing edge, behind its own rule, it reads as what it is: a switch.
+   It is chrome, so it is drawn as chrome: a disc the size of a touch target,
+   a hairline ring, and the conventional speaker glyph inside it. The version
+   before this was four bars and the word SOUND, which at nav scale read as a
+   second wordmark — and a mark is something you look at, where this is
+   something you press.
 
-   Off, the bars are flat — a meter showing nothing, which is what is
-   happening. On, they step into a silhouette and the second one takes the
-   accent. The state lives in the glyph, so the label never changes length and
-   the bar never reflows when you press it. */
+   Off carries a stroke through the cone; on shows two arcs and tints the ring.
+   One `svg`, with only the arcs and the bar swapping, so nothing shifts. */
 .c2snd {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  font: inherit;
-  font-size: 0.625rem;
-  font-weight: 400;
-  line-height: 1;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
+}
+
+.c2snd__btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   color: var(--nav-dim);
-  opacity: 0.85;
-  transition: color 0.4s ease, opacity 0.4s ease;
+  box-shadow: inset 0 0 0 1px var(--nav-line);
+  transition:
+    color 0.4s ease,
+    box-shadow 0.4s ease,
+    background-color 0.4s ease;
 }
 
-.c2snd:hover,
-.c2snd:focus-visible,
-.c2snd[data-on='true'] { color: var(--nav-ink); opacity: 1; }
-
-.c2snd__bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  height: 9px;
+.c2snd__btn:hover,
+.c2snd__btn:focus-visible {
+  color: var(--nav-ink);
+  box-shadow: inset 0 0 0 1px currentColor;
 }
 
-.c2snd__bars i {
-  display: block;
-  width: 1.5px;
-  height: 1.5px;
-  background: currentColor;
-  transition: height 0.4s var(--ease), background-color 0.4s ease;
+.c2snd[data-on='true'] .c2snd__btn {
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
-/* Staggered, so it reads as a level rather than as a bar chart. */
-.c2snd[data-on='true'] .c2snd__bars i:nth-child(1) { height: 4px; }
-.c2snd[data-on='true'] .c2snd__bars i:nth-child(2) { height: 9px; background: var(--accent); }
-.c2snd[data-on='true'] .c2snd__bars i:nth-child(3) { height: 6px; }
-.c2snd[data-on='true'] .c2snd__bars i:nth-child(4) { height: 3px; }
+.c2snd__ico {
+  width: 16px;
+  height: 16px;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The cone is the constant, and it is the one filled shape — at 16px an
+   outlined cone closes up into a smudge. */
+.c2snd__cone {
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 1.2;
+}
+
+/* Arcs and bar cross-fade in place. `pathLength` is not needed: they are short
+   enough that opacity alone reads as a swap rather than as a dissolve. */
+.c2snd__wave,
+.c2snd__mute { transition: opacity 0.3s ease; }
+
+.c2snd__wave { opacity: 0; }
+.c2snd__mute { opacity: 1; }
+.c2snd[data-on='true'] .c2snd__wave { opacity: 1; }
+.c2snd[data-on='true'] .c2snd__mute { opacity: 0; }
+
+/* ---- the invitation
+
+   Sound is off until asked, so on a first visit the page has to ask. Three
+   slow pulses out of the ring and a label that unfurls, once, ended by any
+   press or hover. The ring is a pseudo-free element so the animation cannot
+   touch the button's own box. */
+.c2snd__ring {
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--accent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.c2snd[data-hint='true'] .c2snd__ring {
+  animation: c2sndring 2.1s var(--ease) 3;
+}
+
+.c2snd[data-hint='true'] .c2snd__btn { color: var(--nav-ink); }
+
+@keyframes c2sndring {
+  0%   { opacity: 0.55; transform: scale(1); }
+  70%  { opacity: 0;    transform: scale(1.75); }
+  100% { opacity: 0;    transform: scale(1.75); }
+}
+
+/* Out of flow entirely, and to the left, since the button is the last thing in
+   the bar and anything to its right would be off the screen.
+
+   The first attempt animated max-width on an in-flow label. That does reflow
+   the bar: this control is the last child of a right-aligned group, so the
+   group grows leftward and every link shifts with it — measured as a visible
+   slide of PROJECTS / APPROACH / ABOUT when the label arrived and again when
+   it folded away. An invitation is not worth moving the navigation twice. */
+.c2snd__tip {
+  position: absolute;
+  /* Under the icon, right-aligned to the bar's edge, like an annotation under
+     a symbol. Set to the left of the button it ran straight into the call to
+     action's arrow — there are only about fifty pixels between the two, and
+     the word needs more than that. Below, nothing can crowd it at any width. */
+  top: calc(100% + 8px);
+  right: 0;
+  font-size: 0.625rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--nav-dim);
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+}
+
+/* Kept on touch too. There is no title tooltip on a phone and no hover to
+   reveal one, so the label is the only thing naming what the icon does — and
+   since the invitation expires on its own, nothing needs a pointer to
+   dismiss it. */
+
+/* An animation rather than a transition between two states, because that is
+   what this is: the label appears, holds, and folds away once, on a timeline
+   the JS does not have to drive. It also cannot be out-ranked — animations
+   take precedence over normal declarations — which a transitioned pair of
+   rules can be, and was. */
+.c2snd[data-hint='true'] .c2snd__tip {
+  animation: c2sndtip 5.2s var(--ease) both;
+}
+
+@keyframes c2sndtip {
+  0%        { opacity: 0; transform: translateY(-4px); }
+  10%, 80%  { opacity: 1; transform: none; }
+  100%      { opacity: 0; transform: translateY(-2px); }
+}
+
+/* The same beat without the slide, for reduced motion. */
+@keyframes c2sndtipflat {
+  0%       { opacity: 0; }
+  6%, 84%  { opacity: 1; }
+  100%     { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c2snd[data-hint='true'] .c2snd__ring { animation: none; }
+  /* Still shown, still self-dismissing — just without the slide. */
+  .c2snd[data-hint='true'] .c2snd__tip {
+    animation: c2sndtipflat 5.2s linear both;
+  }
+}
 
 /* ================================================================ footer */
 .c2foot {
@@ -1949,9 +2176,8 @@ html.c2-locked body { overflow: hidden; }
   .c2nav__cta { display: none; }
 
   /* Width is scarce here, and the bars already say what the word says. */
-  .c2snd__label { display: none; }
   /* Nothing left to its right but the menu trigger, so it takes its own gap. */
-  .c2snd { margin-right: 14px; opacity: 1; }
+  .c2snd { margin-right: 14px; }
 
   .c2nav__trigger {
     display: inline-flex;

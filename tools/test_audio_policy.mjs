@@ -159,6 +159,27 @@ mod.toggleEnabled()
 await new Promise((r) => setTimeout(r, 20))
 check('  ...and on again after one press', audioState().enabled === true)
 
+console.log('\na reload with sound already on')
+// The regression that shipped: 'on' was saved, so the control reported itself
+// on, while the page was silent because no gesture had unlocked anything yet.
+teardownAudio()
+globalThis.localStorage.setItem('c2:sound', 'on')
+initAudio()
+check('the preference survives', audioState().enabled === true)
+check('  ...but nothing is unlocked', audioState().unlocked === false)
+check('  ...so nothing is audible', mod.isAudible() === false)
+now += 5000
+check('  ...and sound() still refuses', sound('ui.click') === false)
+check('one press starts it rather than muting it', mod.toggleEnabled() === true)
+await new Promise((r) => setTimeout(r, 20))
+check('  ...now it is audible', mod.isAudible() === true)
+check('  ...and the preference is untouched',
+  globalThis.localStorage.getItem('c2:sound') === 'on')
+now += 5000
+check('  ...and sound plays', sound('ui.click') === true)
+check('a second press mutes, as normal', mod.toggleEnabled() === false)
+check('  ...and that is stored', globalThis.localStorage.getItem('c2:sound') === 'off')
+
 console.log('\nreduced motion')
 globalThis.__media = { '(prefers-reduced-motion: reduce)': true }
 await freshStart()

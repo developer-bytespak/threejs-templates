@@ -20,7 +20,7 @@ import { lockScroll, usePrefersReducedMotion } from './scroll.js'
  */
 const EXIT_MS = 1000
 
-function Preloader({ target, stage, ready }) {
+function Preloader({ target, stage, ready, onLeave }) {
   const reduced = usePrefersReducedMotion()
   const rootRef = useRef(null)
   const numRef = useRef(null)
@@ -77,12 +77,16 @@ function Preloader({ target, stage, ready }) {
         cancelAnimationFrame(frame)
         frame = 0
         setPhase('leave')
+        // The page waits for this rather than for `ready`: the panel does not
+        // start moving until the count has caught up, and the entrance is
+        // timed against the panel, not against the loading.
+        onLeave?.()
       }
     }
 
     draw(performance.now())
     return () => { if (frame) cancelAnimationFrame(frame) }
-  }, [ready, phase, target, stage])
+  }, [ready, phase, target, stage, onLeave])
 
   // Scroll comes back only once the panel is off the page. Released at the
   // start of the wipe, a trackpad already in motion would throw the reader

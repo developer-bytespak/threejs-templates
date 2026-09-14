@@ -201,7 +201,12 @@ const MANIFEST = '/assets/construction-two/audio/manifest.json'
 let ctx = null
 let master = null
 let buses = null
-let enabled = true
+// Read at module scope, not in initAudio(). React runs child effects before
+// parent ones, so SoundButton subscribed before the page had called initAudio()
+// and was handed this value — and when it said `true`, the control rendered its
+// ON state on a page whose sound is off, which is a lie about the one thing it
+// exists to report. `readPref` is a function declaration and so is hoisted.
+let enabled = readPref()
 let unlocked = false
 let failed = false
 let ambience = null
@@ -525,8 +530,25 @@ export function sound(id, opts = {}) {
 export function initAudio() {
   if (unlocked || failed || ctx) return
   media()
+  // Re-read rather than trust the module's first look: another tab may have
+  // written the preference since this module was evaluated.
   enabled = readPref()
   notify()
+}
+
+/**
+ * Has this visitor ever answered the question?
+ *
+ * Only used to decide whether the control should draw attention to itself. A
+ * first-time visitor gets the invitation; someone who has already turned sound
+ * off has answered, and being nudged again is nagging.
+ */
+export function hasPref() {
+  try {
+    return localStorage.getItem(STORAGE_KEY) !== null
+  } catch {
+    return true
+  }
 }
 
 export function setEnabled(on) {
@@ -548,12 +570,34 @@ export function setEnabled(on) {
 }
 
 export function toggleEnabled() {
+  // A stored preference is not a state. Nothing on this page is audible until
+  // a gesture has unlocked the context, so a visitor arriving with 'on' saved
+  // has the wish but not the sound — and the first press there must START it,
+  // not mute it. Without this the press writes 'off' over a preference nobody
+  // withdrew, stays silent, and takes a second press to do what the first one
+  // looked like it would do.
+  if (enabled && !unlocked && !failed) {
+    start(() => sound('ui.click'))
+    return true
+  }
   const next = !enabled
   setEnabled(next)
   // The press itself is the activation, so this is where the context gets
   // built and resumed — the first time, and after any later mute.
   if (next) start(() => sound('ui.click'))
   return next
+}
+
+/**
+ * Is sound actually coming out?
+ *
+ * Distinct from `enabled`, which is only what the visitor last asked for. A
+ * page reloaded with 'on' saved has `enabled` true and nothing playing, and a
+ * control that reads the preference rather than this reports itself as on over
+ * a silent page — which is exactly what it did.
+ */
+export function isAudible() {
+  return enabled && unlocked && !failed
 }
 
 export function audioState() {

@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { introPush } from './intro.js'
 import * as THREE from 'three'
 import { useRoomModel } from './useRoomModel.js'
 import { easeInOutCubic, resolveKeyframes } from './story.js'
@@ -105,6 +106,16 @@ function CinematicCamera({ input, reducedMotion }) {
         scratch.right,
         Math.sin(time * 0.13) * DRIFT_REACH,
       )
+    }
+
+    // The opening push, and the only thing between the storyboard and the
+    // camera. It slides the computed position back along its own view axis and
+    // lets it return to zero, so the framing never changes — and on every
+    // frame after the first couple of seconds this is exactly `scratch.position`
+    // untouched.
+    const push = introPush()
+    if (push > 0) {
+      scratch.position.sub(scratch.lookAt).multiplyScalar(1 + push).add(scratch.lookAt)
     }
 
     if (!scratch.started) {

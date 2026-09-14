@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import RoomViewer from './RoomViewer.jsx'
 import { TRACK_VH } from './story.js'
 import ConstructionNav from './page/ConstructionNav.jsx'
@@ -11,6 +11,8 @@ import FinalProjectCTA from './page/FinalProjectCTA.jsx'
 import ConstructionFooter from './page/ConstructionFooter.jsx'
 import Preloader from './page/Preloader.jsx'
 import useSiteLoad from './page/useSiteLoad.js'
+import { markEntered, resetEntered } from './page/entrance.js'
+import { cancelIntro, startIntro } from './intro.js'
 import { useLenis, usePrefersReducedMotion, useScrollLink } from './page/scroll.js'
 import { useAudioDelegates, useAudioInit } from './audio/useAudio.js'
 import './page/page.css'
@@ -52,6 +54,63 @@ function useHashLanding(ready) {
   }, [ready])
 }
 
+/**
+ * Hold the opening, then let it play.
+ *
+ * The hero already had an entrance — the headline's two lines rise and fade in
+ * turn, the working paper settles in from the right, the chapter marker lifts.
+ * All of it was firing on mount, underneath the loader, and finishing before
+ * the panel had moved. The page appeared fully assembled, which is the one
+ * thing an opening sequence must not do.
+ *
+ * So nothing new is animated here. `data-enter` pins that existing choreography
+ * at its first frame while the panel is up, and releasing it is what starts the
+ * sequence — the timings, easings and stagger are the ones the hero was
+ * designed with.
+ *
+ * The release is timed off the panel rather than off `ready`, and lands a
+ * little way into the wipe. The panel travels upward, so the foot of the
+ * viewport clears first, which is where the working paper sits: by the time the
+ * headline's corner is uncovered, its lines are already on their way in.
+ */
+const ENTER_IN = 340
+
+function useEnter(reduced) {
+  const [state, setState] = useState('hold')
+  const timer = useRef(0)
+
+  const begin = useCallback(() => {
+    clearTimeout(timer.current)
+    // The camera starts moving with the panel rather than with the DOM. The
+    // scene is uncovered from the foot of the screen upward, so the push is
+    // already under way in the part the reader sees first.
+    if (reduced) cancelIntro()
+    else startIntro()
+    timer.current = setTimeout(() => {
+      setState('in')
+      markEntered()
+    }, reduced ? 0 : ENTER_IN)
+  }, [reduced])
+
+  // Nothing here may leave the page pinned. If the loader never reports — it
+  // has its own ceiling, but this does not depend on that holding — the
+  // opening plays anyway rather than the hero staying invisible.
+  useEffect(() => {
+    const fail = setTimeout(() => {
+      setState((s) => (s === 'hold' ? 'in' : s))
+      markEntered()
+    }, 16000)
+    return () => {
+      clearTimeout(fail)
+      clearTimeout(timer.current)
+      resetEntered()
+      cancelIntro()
+    }
+  }, [])
+
+  return { state, begin }
+}
+
 function ConstructionTwoPage() {
   const heroRef = useRef(null)
   const pageRef = useRef(null)
@@ -77,10 +136,11 @@ function ConstructionTwoPage() {
   // and compiling for there to be anything to wait for.
   const { target, stage, ready } = useSiteLoad()
   useHashLanding(ready)
+  const enter = useEnter(reduced)
 
   return (
-    <div className="c2page" ref={pageRef}>
-      <Preloader target={target} stage={stage} ready={ready} />
+    <div className="c2page" ref={pageRef} data-enter={enter.state}>
+      <Preloader target={target} stage={stage} ready={ready} onLeave={enter.begin} />
       <ConstructionNav />
 
       <main>

@@ -5,7 +5,13 @@ import EducationScene from './EducationScene.jsx'
 import EducationEditorial from './EducationEditorial.jsx'
 import EducationChrome from './EducationChrome.jsx'
 import { CHAPTERS } from './chapters.js'
-import { RUNOUT_VH, TRACK_VH, resolveComposition, resolveQuality } from './quality.js'
+import {
+  LIFT_LEAD,
+  LIFT_SCROLL,
+  TRACK_VH,
+  resolveComposition,
+  resolveQuality,
+} from './quality.js'
 import { scrollToY, useScrollFrame, useSmoothScroll } from './scroll.js'
 import { EducationFooter } from './EducationOutro.jsx'
 import { sound } from './audio/AudioManager.js'
@@ -118,8 +124,10 @@ function EducationExperience() {
   const [hover, setHover] = useState({ kind: null })
   const [hoveredDiscipline, setHoveredDiscipline] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
-  // True once the footer has completely covered the stage.
+  // True once the panel has lifted as far as it goes.
   const [offstage, setOffstage] = useState(false)
+  // And true once enough of the footer is showing to be worth drawing.
+  const [revealed, setRevealed] = useState(false)
   // And whether the scene has finished catching up with the scroll. The two
   // together decide when it is safe to stop rendering — see the Canvas below.
   const [settled, setSettled] = useState(true)
@@ -130,6 +138,12 @@ function EducationExperience() {
   const rootRef = useRef(null)
   const cursorRef = useRef(null)
   const trackRef = useRef(null)
+  const footRef = useRef(null)
+  // The footer's own height, measured on change rather than per frame: the
+  // handoff is sized from it, and asking the DOM for it every frame would be a
+  // forced layout on the one loop that must not cause any.
+  const footHeight = useRef(0)
+  const written = useRef({ scroll: -1, travel: -1, reveal: '' })
 
   const quality = useMemo(
     () => resolveQuality(device.width, device.coarse),
@@ -150,53 +164,95 @@ function EducationExperience() {
   // scrollbar by that frame.
   const readScroll = useCallback(() => {
     const track = trackRef.current
+    const root = rootRef.current
     const top = track ? track.offsetTop : 0
     const height = track ? track.offsetHeight : innerHeight
     const span = Math.max(height - innerHeight, 1)
 
-    // THE STORY IS SHORTER THAN THE TRACK.
-    //
-    // Progress is measured against the track minus a run-out, so it reaches 1
-    // while the footer is still a good half-screen below the fold. That gap is
-    // the whole point: the scene damps its own progress before the camera
-    // reads it, so the number always arrives at the end slightly before the
-    // picture does. Measuring against the full track meant the footer began
-    // covering the scene at the exact frame progress hit 1 — with the tree
-    // still visibly finishing, and further behind the faster you scrolled.
-    const usable = Math.max(span - innerHeight * RUNOUT_VH, 1)
-    const progress = clamp01((scrollY - top) / usable)
+    const progress = clamp01((scrollY - top) / span)
     input.current.progress = progress
 
-    // How much of the footer has risen into the frame, 0..1 of a viewport.
-    // The footer is in ordinary flow, so this is just where its top edge is.
-    const rise = clamp01((scrollY + innerHeight - (top + height)) / innerHeight)
+    // ---- the handoff
+    //
+    // A fixed footer cannot be taller than the window: its top would sit above
+    // the viewport with no way to reach it. So the reveal is conditional on the
+    // footer actually fitting, and where it does not the page falls back to an
+    // ordinary footer scrolling up over the panel. One measurement decides it.
+    const footH = footHeight.current
+    const canReveal = footH > 0 && footH <= innerHeight - 48
+    // The panel travels exactly the footer's height, so its bottom edge comes
+    // to rest on the footer's top edge rather than near it.
+    const travel = canReveal ? footH : 0
+    // More scroll than travel, so the panel rises at about four fifths of the
+    // scroll: attached to the gesture, with a little weight behind it.
+    const liftScroll = Math.round(travel * LIFT_SCROLL)
+    // And it starts before the story is over, so the two motions overlap
+    // instead of meeting at a point. A point reads as a stop.
+    const lead = Math.round(liftScroll * LIFT_LEAD)
+    // Which means the spacer only has to carry what is left after the lead —
+    // the overlap is paid for out of the track, not added to the page.
+    const exitScroll = liftScroll - lead
 
-    const root = rootRef.current
+    const lift = liftScroll > 0
+      ? clamp01((scrollY - (top + span - lead)) / liftScroll)
+      : 0
+
     if (root) {
-      // Continuous motion in the HTML (the rail, the ribbon) reads this custom
-      // property, so scrolling never re-renders the editorial layers.
       root.style.setProperty('--p', progress.toFixed(5))
-      // And the handoff: the fixed layers drift up against the rising footer.
-      root.style.setProperty('--exit', rise.toFixed(4))
+      root.style.setProperty('--lift', lift.toFixed(4))
+
+      // These three change only when the window or the footer does, and two of
+      // them affect layout — so they are written on change, never per frame.
+      const w = written.current
+      if (w.scroll !== exitScroll) {
+        w.scroll = exitScroll
+        root.style.setProperty('--exit-h', `${exitScroll}px`)
+      }
+      if (w.travel !== travel) {
+        w.travel = travel
+        root.style.setProperty('--lift-travel', `${travel}px`)
+      }
+      const mode = canReveal ? 'on' : 'off'
+      if (w.reveal !== mode) {
+        w.reveal = mode
+        root.dataset.reveal = mode
+      }
     }
 
-    // How much of the world is still on screen. The scene's ambience follows
-    // it down, so the place stops being audible as it stops being visible
-    // rather than droning on behind an opaque footer.
-    input.current.exposure = 1 - rise
+    // How much of the panel is still on screen. The scene's ambience follows it
+    // down, so the place stops being audible as it stops being visible.
+    input.current.exposure = clamp01(1 - (lift * travel) / innerHeight)
 
-    // Covered means covered: the footer has risen a full viewport and there is
-    // nothing of the stage left to see. Note this is NOT the same question as
-    // "has the story finished" — that was the old test, and it is what let the
-    // renderer stop while the scene was still mid-formation.
-    const covered = rise >= 1
+    // The panel never leaves entirely — it comes to rest on the footer's top
+    // edge — so this is only ever true where the reveal is off and an ordinary
+    // footer has scrolled over it.
+    const covered = !canReveal && scrollY > top + span + innerHeight * 0.2
     setOffstage((was) => (was === covered ? was : covered))
+    // Enough of the footer showing to be worth drawing its mark.
+    const showing = canReveal ? lift > 0.4 : covered
+    setRevealed((was) => (was === showing ? was : showing))
 
     setChapter(chapterFor(progress))
     setMuseumStop(museumStopFor(progress))
   }, [])
 
   useScrollFrame(readScroll)
+
+  // The footer decides the shape of the ending, so it has to be measured
+  // rather than assumed: how far the panel travels IS the footer's height, so
+  // that the panel's bottom edge comes to rest exactly on the footer's top one.
+  useEffect(() => {
+    const el = footRef.current
+    if (!el) return undefined
+    const measureFoot = () => {
+      footHeight.current = el.offsetHeight
+    }
+    measureFoot()
+    if (typeof ResizeObserver !== 'function') return undefined
+    const ro = new ResizeObserver(measureFoot)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   useEffect(() => {
     const onResize = () => {
@@ -293,11 +349,25 @@ function EducationExperience() {
   const interactive = Boolean(hover.kind) || Boolean(hoveredDiscipline)
 
   return (
-    <div className="edu" ref={rootRef} data-chapter={chapter} data-past={offstage}>
-      {/* Painted in CSS rather than as a scene background: the canvas has to
-          stay transparent so the behind-layer typography can be occluded by
-          geometry rather than covered by a clear colour. */}
-      <div className="edu__ground" aria-hidden="true" />
+    <div
+      className="edu"
+      ref={rootRef}
+      data-chapter={chapter}
+      data-past={offstage}
+      data-reveal="off"
+    >
+      {/* THE PANEL.
+          Ground, scene and typography are one surface now, because at the end
+          of the page they leave as one: it lifts away and the footer is behind
+          it. That is also why these four are `absolute` inside here rather
+          than `fixed` to the viewport — a transform on a fixed ancestor turns
+          its fixed descendants into absolute ones anyway, so making it
+          explicit is the honest version of what the browser would do. */}
+      <div className="edu__main">
+        {/* Painted in CSS rather than as a scene background: the canvas has to
+            stay transparent so the behind-layer typography can be occluded by
+            geometry rather than covered by a clear colour. */}
+        <div className="edu__ground" aria-hidden="true" />
 
       <div className="edu__stage">
         <Canvas
@@ -338,13 +408,14 @@ function EducationExperience() {
           copy shares space with lit architecture, and it needs ground. */}
       <div className="edu__scrim" aria-hidden="true" />
 
-      <EducationEditorial
-        chapter={chapter}
-        museumStop={museumStop}
-        hoveredDiscipline={hoveredDiscipline}
-        onHover={setHoveredDiscipline}
-        onNavigate={scrollToChapter}
-      />
+        <EducationEditorial
+          chapter={chapter}
+          museumStop={museumStop}
+          hoveredDiscipline={hoveredDiscipline}
+          onHover={setHoveredDiscipline}
+          onNavigate={scrollToChapter}
+        />
+      </div>
 
       <EducationChrome
         chapter={chapter}
@@ -362,8 +433,8 @@ function EducationExperience() {
         </div>
       ) : null}
 
-      {/* The scroll track. The scene is fixed behind it; this only exists to
-          give the page a length for the journey to travel along. */}
+      {/* The scroll track. The panel is fixed in front of it; this only exists
+          to give the page a length for the journey to travel along. */}
       <div
         className="edu__track"
         ref={trackRef}
@@ -371,8 +442,19 @@ function EducationExperience() {
         aria-hidden="true"
       />
 
-      {/* And the close, in ordinary document flow. */}
-      <EducationFooter onNavigate={scrollToChapter} />
+      {/* And this is the scroll the handoff runs on. The footer is fixed, so
+          it contributes no height of its own — without this there would be
+          nothing left to scroll and nowhere for the panel to go. Its height is
+          written from the reader, because it is derived from how tall the
+          footer actually turned out to be. */}
+      <div className="edu__exit" aria-hidden="true" />
+
+      {/* Behind the panel from the start, revealed by it leaving. */}
+      <EducationFooter
+        innerRef={footRef}
+        revealed={revealed}
+        onNavigate={scrollToChapter}
+      />
     </div>
   )
 }

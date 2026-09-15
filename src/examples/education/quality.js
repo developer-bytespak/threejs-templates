@@ -63,28 +63,43 @@ export function resolveComposition(width) {
 }
 
 /**
- * Total scroll length of the journey, and the run-out at the end of it.
+ * Total scroll length of the journey.
  *
- * 1000vh of scroll paces the eight chapters, and that is the number the whole
- * thing is tuned against. RUNOUT is extra track BEYOND the end of the story:
- * scroll that exists purely so progress can reach 1 — and the scene can settle
- * on it — while the footer is still below the fold.
+ * 1100vh is 1000vh of actual scroll on a full-height window, and that is the
+ * number the eight chapters are paced against.
  *
- * Without it, progress hit 1 at exactly the scroll position where the footer's
- * top edge touched the bottom of the viewport. That is fine for the number and
- * wrong for the picture, because the scene damps its own progress before the
- * camera reads it: the value said "finished" while the tree was visibly still
- * a few tenths behind, and the footer then slid over a growth that had not
- * happened yet. The faster you scrolled, the further behind it was.
+ * There is no run-out any more. There used to be half a screen of track after
+ * the story finished, so the scene could settle before the ending began — and
+ * it did settle, but the cost was half a screen of scroll where the page did
+ * not move at all. Four notches of a wheel, nothing happening. The ending
+ * overlaps the story's tail instead, which removes the stall and is also just
+ * better: you watch the page start leaving while the last of it is still
+ * arriving.
  *
- * So the track is the story plus the run-out, and the reader measures progress
- * against the story part alone.
- *
- * The footer is NOT in here: it follows the track in ordinary document flow,
- * which is why scroll progress is measured against this element rather than
- * against the document.
+ * The footer is NOT in here: it is fixed behind the panel, and the handoff
+ * scroll is a spacer sized from LIFT_SCROLL and LIFT_LEAD below.
  */
-export const TRACK_VH = 1160
+export const TRACK_VH = 1100
 
-/** Viewport heights of settle between the story ending and the footer arriving. */
-export const RUNOUT_VH = 0.6
+/**
+ * Scroll spent on the handoff, as a multiple of how far the panel travels.
+ *
+ * Above 1 the panel rises more slowly than the page scrolls, which is what
+ * makes it read as a surface being drawn away rather than as a div moving.
+ * 1.25 puts it at four fifths of scroll speed; the footer behind it moves at
+ * roughly a quarter, and that ratio between the two is the whole effect.
+ */
+export const LIFT_SCROLL = 1.25
+
+/**
+ * How much of the lift happens BEFORE the story ends, as a fraction of it.
+ *
+ * This is what makes the ending continuous. At 0 the panel waits for progress
+ * to reach exactly 1 and the two motions meet at a single point — which in
+ * practice reads as a stop, because the eye needs the new movement to have
+ * begun before the old one finishes to believe they are one gesture. At 0.3
+ * the panel is already rising through the last few per cent of the journey,
+ * so nothing ever pauses; by the time the tree has finished settling it is a
+ * third of the way gone.
+ */
+export const LIFT_LEAD = 0.3

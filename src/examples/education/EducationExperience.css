@@ -5,9 +5,21 @@
   --ember: #ffab5c;
   --ground: #080b10;
 
-  /* How far the footer has risen into the frame, 0..1 of a viewport. Written
-     by the scroll reader; read by the handoff block further down. */
-  --exit: 0;
+  /* The handoff, all written by the scroll reader.
+     --lift          0..1, how far through lifting the panel is
+     --lift-travel   how far it goes, in px: exactly the footer's height, so
+                     its bottom edge comes to rest on the footer's top edge
+     --exit-h        the spacer that carries what the track does not */
+  --lift: 0;
+  --lift-travel: 0px;
+  --exit-h: 0px;
+
+  /* Two shades, a hair apart. The seam between them is the point: without a
+     difference the panel lifting away reads as nothing happening at all. */
+  --panel: #06080c;
+  --foot: #0e131a;
+
+  background: var(--foot);
 
   position: relative;
   color: var(--ink);
@@ -25,8 +37,47 @@
    element that creates a stacking context, which is why the editorial wrapper
    is display: contents. */
 
-.edu__ground {
+/* ==================================================================
+   THE PANEL, AND THE FOOTER BEHIND IT
+   ==================================================================
+   The scene is a surface laid over the footer, not a backdrop the footer
+   scrolls across. At the end of the journey it lifts, and what was always
+   behind it comes into view.
+
+   Everything inside is `absolute`, not `fixed`. A transform on an ancestor
+   makes its fixed descendants resolve against that ancestor instead of the
+   viewport — so a fixed child of a transformed panel is already behaving like
+   an absolute one, and writing `fixed` would just be a lie about what the
+   browser is doing. */
+.edu__main {
   position: fixed;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  background: var(--panel);
+  /* Square while it is the whole page; rounded the instant it starts to lift,
+     because that is when the corner has something to be a corner against. The
+     ramp is fast — a radius easing in over the whole travel reads as the box
+     melting rather than as an edge. */
+  border-radius: 0 0 var(--panel-r) var(--panel-r);
+  --panel-r: calc(
+    clamp(0, calc(var(--lift, 0) * 9), 1) * clamp(16px, 2.4vw, 32px)
+  );
+  transform: translate3d(0, calc(var(--lift, 0) * -1 * var(--lift-travel, 0px)), 0);
+  will-change: transform;
+}
+
+/* The scroll the handoff runs on. The footer is fixed and contributes no
+   height, so without this there is nothing left to scroll at the end. */
+.edu__exit {
+  position: relative;
+  z-index: 0;
+  height: var(--exit-h, 0px);
+  pointer-events: none;
+}
+
+.edu__ground {
+  position: absolute;
   inset: 0;
   z-index: -1;
   /* A brighter pool behind where the subject sits gives dark silhouettes
@@ -48,29 +99,9 @@
 }
 
 .edu__stage {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 1;
-}
-
-/* ---- the handoff to the footer
-   The footer is in ordinary document flow, so it rises at exactly the speed of
-   the scroll. These layers are fixed, so on their own they would not move at
-   all and the footer would simply wipe up over a static picture.
-
-   Instead they drift up against it at a fraction of its speed. That is what
-   makes the two read as one page rather than as a panel sliding over a
-   backdrop — and the fraction is small on purpose: the world has to still be
-   there above the footer when the page comes to rest, not be pushed off the
-   top by its own exit.
-
-   `--ground` is deliberately excluded. It is the backdrop, it is what the
-   parallax is measured against, and holding it still also guarantees there is
-   never a strip of nothing under a stage that has moved. */
-.edu__stage,
-.edu__scrim,
-.edu-layer {
-  transform: translate3d(0, calc(var(--exit, 0) * -16vh), 0);
 }
 
 .edu__canvas {
@@ -96,7 +127,7 @@
 /* Same stacking level as the front layers, but earlier in the DOM, so the
    typography paints over it while the scene paints under it. */
 .edu__scrim {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
@@ -108,7 +139,7 @@
 }
 
 .edu-layer {
-  position: fixed;
+  position: absolute;
   inset: 0;
   pointer-events: none;
   opacity: 0;
@@ -139,20 +170,15 @@
 .edu-layer > * {
   transform: translateY(16px);
   transition: transform 1.1s cubic-bezier(0.22, 0.68, 0.28, 1);
-  /* The typography leaves as the footer arrives; the scene behind it does not.
-     These compositions are built for a whole viewport, and once the footer has
-     taken three quarters of it there is no composition left — the closing
-     headline was being sliced clean through the middle by the footer's top
-     edge. Set on the CHILD so it multiplies with the layer's own data-active
-     opacity instead of fighting it, and deliberately not transitioned: this
-     one is scroll-driven and a 1s ease would just lag the page.
-
-     Timed to when the footer's edge actually reaches the type rather than to
-     the start of the handoff: the footer top sits at (1 - exit) viewports
-     while the type rides up at 0.16 of that, so they meet at exit ≈ 0.48.
-     Fading from 0.30 means the line is already gone by the time the edge
-     would have cut it, and fully present for the whole approach. */
-  opacity: clamp(0, calc((0.52 - var(--exit, 0)) * 4.5), 1);
+  /* The closing copy rides up with the panel and dissolves just before it
+     reaches the top edge. Without this the panel comes to rest with the last
+     action button sliced in half against the top of the window and parked
+     there — travelling off is fine, being permanently half-cut is not.
+     Held at full for the first half of the lift so it is the panel you watch
+     leaving, not a fade. Set on the CHILD so it multiplies with the layer's
+     own data-active opacity instead of fighting it, and not transitioned,
+     because this one is scroll-driven. */
+  opacity: clamp(0, calc((0.9 - var(--lift, 0)) * 2.9), 1);
 }
 
 .edu-layer[data-active='true'] > * {
@@ -1409,7 +1435,7 @@
    instead of being computed — that is what the @property registration above
    is for. */
 .edu-foot {
-  --edu-sheet: #0b0e12;
+  --edu-sheet: var(--foot);
   --edu-ink: rgba(244, 241, 234, 0.94);
   --edu-ink-dim: rgba(244, 241, 234, 0.6);
   --edu-ink-faint: rgba(244, 241, 234, 0.34);
@@ -1491,6 +1517,31 @@
 /* ---- the footer */
 .edu-foot {
   padding: clamp(56px, 8vh, 110px) clamp(20px, 5vw, 76px) clamp(26px, 4vh, 44px);
+}
+
+/* ---- revealed, not scrolled
+   Pinned to the bottom of the window and sitting BEHIND the panel, so the only
+   thing that brings it into view is the panel leaving. It rises as that
+   happens, but at roughly a third of the panel's rate: two surfaces moving at
+   different speeds is what gives the ending depth, and it is the reason the
+   panel needs a visible edge to move against. */
+.edu[data-reveal='on'] .edu-foot {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  transform: translate3d(0, calc((1 - var(--lift, 0)) * var(--lift-travel, 0px) * 0.34), 0);
+  will-change: transform;
+}
+
+/* Where the footer is taller than the window there is no reveal to be had —
+   pinning it would put its top edge above the viewport with no way to reach
+   it. It goes back to being an ordinary footer scrolling up over the panel,
+   which is the same page, told plainly. */
+.edu[data-reveal='off'] .edu-foot {
+  position: relative;
+  z-index: 3;
 }
 
 .edu-foot__cta {
@@ -1651,6 +1702,19 @@
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.4s linear;
+}
+
+/* The bar, the chapter rail and the pointer readout all belong to the panel
+   and leave with it. They are fixed siblings rather than children — the panel
+   clips its overflow and the bar must not be clipped by it — so they carry the
+   same transform instead of inheriting it. Left behind, the rail would hang in
+   the middle of a footer labelling a chapter nobody can see, and the bar would
+   print itself straight through the closing copy as the panel slid up past it,
+   which is exactly what it did. */
+.edu-header,
+.edu-rail-nav,
+.edu-readout {
+  transform: translate3d(0, calc(var(--lift, 0) * -1 * var(--lift-travel, 0px)), 0);
 }
 
 /* ==================================================================

@@ -1,63 +1,23 @@
-import { useEffect, useRef, useState } from 'react'
 import { FOOTER } from './site.js'
 import { BranchMark } from './Diagrams.jsx'
 
 /**
  * The close: the footer, and nothing else.
  *
- * This is the only part of the page in ordinary document flow. Everything
- * above is a fixed stage with a scroll track in front of it, which is the
- * right shape for a journey and the wrong shape for a footer — a footer should
- * arrive because you reached the end of the page, not because a progress value
- * crossed a threshold.
- *
- * So the 3D stage releases once the story is finished and this scrolls up over
- * it normally. The handoff is the campus settling while the typography takes
- * the frame.
- *
- * Its mark draws on an IntersectionObserver rather than on scroll progress,
- * because it is not pinned: one observer, fired once, and the drawing itself
- * is a CSS transition. Nothing here runs per frame.
+ * It sits BEHIND the fixed panel that holds the scene, and is revealed by that
+ * panel lifting away at the end of the journey rather than by scrolling up over
+ * it. That is why it takes `revealed` as a prop instead of watching itself with
+ * an IntersectionObserver: a fixed element that is merely covered is still
+ * intersecting the viewport, so an observer would report it visible on page
+ * load and draw the whole mark while nobody could see it. What counts as
+ * "arrived" here is a fact about the handoff, and the handoff is measured in
+ * one place — the scroll reader.
  */
 
-function useDrawn(threshold = 0.3) {
-  const ref = useRef(null)
-  const [drawn, setDrawn] = useState(false)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el || drawn) return undefined
-    if (typeof IntersectionObserver !== 'function') {
-      setDrawn(true)
-      return undefined
-    }
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        // Intersecting is the normal case. The second clause is for arriving
-        // from somewhere other than a scroll: a jump to the bottom of the page,
-        // a restored offset on reload, a nav click. The observer's first report
-        // then says "not intersecting", because the section is already above
-        // the viewport — and without this the drawing would wait forever for a
-        // moment that has already passed, leaving the headline clipped to
-        // nothing and the diagram blank. Already past counts as arrived.
-        if (entry.isIntersecting || entry.boundingClientRect.bottom <= 0) {
-          setDrawn(true)
-        }
-      },
-      { threshold },
-    )
-    io.observe(el)
-    return () => io.disconnect()
-  }, [drawn, threshold])
-
-  return [ref, drawn]
-}
-
-export function EducationFooter({ onNavigate }) {
-  const [ref, drawn] = useDrawn(0.25)
-
+export function EducationFooter({ innerRef, revealed = false, onNavigate }) {
+  const drawn = revealed
   return (
-    <footer className="edu-foot" ref={ref} data-drawn={drawn}>
+    <footer className="edu-foot" ref={innerRef} data-drawn={drawn}>
       <div className="edu-foot__cta">
         <p className="edu-foot__ask">{FOOTER.cta.headline}</p>
         <button type="button" className="edu-link edu-link--lead" onClick={() => onNavigate('seed')}>

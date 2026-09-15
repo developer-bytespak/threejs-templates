@@ -1,24 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
-import { CTA, FOOTER } from './site.js'
-import { BranchMark, JourneyDiagram } from './Diagrams.jsx'
-import { sound } from './audio/AudioManager.js'
+import { FOOTER } from './site.js'
+import { BranchMark } from './Diagrams.jsx'
 
 /**
- * The close: the final invitation, and the footer.
+ * The close: the footer, and nothing else.
  *
- * These are the only parts of the page in ordinary document flow. Everything
+ * This is the only part of the page in ordinary document flow. Everything
  * above is a fixed stage with a scroll track in front of it, which is the
- * right shape for a journey and the wrong shape for a footer — a footer
- * should arrive because you reached the end of the page, not because a
- * progress value crossed a threshold.
+ * right shape for a journey and the wrong shape for a footer — a footer should
+ * arrive because you reached the end of the page, not because a progress value
+ * crossed a threshold.
  *
- * So the 3D stage releases once the story is finished, and these scroll up
- * over it normally. The handoff is the campus settling while the typography
- * takes the frame.
+ * So the 3D stage releases once the story is finished and this scrolls up over
+ * it normally. The handoff is the campus settling while the typography takes
+ * the frame.
  *
- * Their diagrams draw on an IntersectionObserver rather than on scroll
- * progress, because they are not pinned: one observer each, fired once, and
- * the drawing itself is a CSS transition. Nothing here runs per frame.
+ * Its mark draws on an IntersectionObserver rather than on scroll progress,
+ * because it is not pinned: one observer, fired once, and the drawing itself
+ * is a CSS transition. Nothing here runs per frame.
  */
 
 function useDrawn(threshold = 0.3) {
@@ -52,59 +51,6 @@ function useDrawn(threshold = 0.3) {
   }, [drawn, threshold])
 
   return [ref, drawn]
-}
-
-export function FinalCTA({ onNavigate }) {
-  const [ref, drawn] = useDrawn(0.35)
-  const rang = useRef(false)
-
-  // One sound, once, when the closing diagram completes. The audio system
-  // decides whether it is allowed to make it.
-  useEffect(() => {
-    if (!drawn || rang.current) return undefined
-    rang.current = true
-    const t = setTimeout(() => sound('future.settle'), 1400)
-    return () => clearTimeout(t)
-  }, [drawn])
-
-  return (
-    <section className="edu-cta" ref={ref} data-drawn={drawn} aria-labelledby="cta-h">
-      <div className="edu-cta__col">
-        <p className="edu-int__eyebrow">
-          <i aria-hidden="true" />
-          {CTA.eyebrow}
-        </p>
-        <h2 className="edu-cta__head" id="cta-h">
-          {CTA.headline}
-        </h2>
-        <div className="edu-cta__body">
-          {CTA.body.map((line) => (
-            <p key={line}>{line}</p>
-          ))}
-        </div>
-
-        <div className="edu-cta__actions">
-          <button
-            type="button"
-            className="edu-link edu-link--lead"
-            onClick={() => onNavigate('seed')}
-          >
-            <span>{CTA.primary}</span>
-            <i aria-hidden="true">↗</i>
-          </button>
-          <button type="button" className="edu-link" onClick={() => onNavigate('reveal')}>
-            <span>{CTA.secondary}</span>
-            <i aria-hidden="true">↗</i>
-          </button>
-        </div>
-      </div>
-
-      <div className="edu-cta__figure">
-        <JourneyDiagram />
-        <p className="edu-int__caption">Fig. 04 — Seed to campus</p>
-      </div>
-    </section>
-  )
 }
 
 export function EducationFooter({ onNavigate }) {

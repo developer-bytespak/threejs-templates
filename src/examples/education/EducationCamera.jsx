@@ -5,9 +5,6 @@ import * as THREE from 'three'
 const WORLD_UP = new THREE.Vector3(0, 1, 0)
 const FALLBACK_UP = new THREE.Vector3(0, 0, 1)
 
-/** How far back the camera stands while an editorial sheet covers the frame. */
-const SHEET_DOLLY = 0.18
-
 const POSITION_DAMPING = 2.2
 const LOOK_DAMPING = 2.8
 const PARALLAX_DAMPING = 1.7
@@ -177,30 +174,6 @@ function EducationCamera({ stage, quality, composition, reducedMotion }) {
     if (aspect < 1) {
       const fit = Math.min(2.1, Math.pow(1 / aspect, 0.5))
       scratch.position.sub(scratch.target).multiplyScalar(fit).add(scratch.target)
-    }
-
-    // ---- the editorial sheets
-    //
-    // The journey itself is frozen while a sheet is up: the timeline holds
-    // story progress still, so the growth, the orbit and the reveal are not
-    // playing to a covered screen. But frozen is not the same as dead — the
-    // strip of world still visible under a rising sheet was completely static,
-    // which read as the page having stalled rather than having changed
-    // register.
-    //
-    // So the one thing that does move is the camera, and it moves BECAUSE of
-    // the sheet: it eases back as the surface rises, holds while the chapter
-    // is read, and comes forward again as the surface drops away. The tree
-    // gets a little smaller as you enter the text and a little larger as you
-    // leave it. That is a dolly along the existing view vector — the path,
-    // the aim, the composition and every keyframe are untouched, which is why
-    // it composes with the rest of the shot instead of fighting it.
-    const cover = s.cover ?? 0
-    if (cover > 0.001) {
-      scratch.position
-        .sub(scratch.target)
-        .multiplyScalar(1 + cover * SHEET_DOLLY)
-        .add(scratch.target)
     }
 
     // Composition: looking to one side of the subject pushes it to the other

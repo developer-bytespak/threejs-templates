@@ -5,23 +5,9 @@ import EducationScene from './EducationScene.jsx'
 import EducationEditorial from './EducationEditorial.jsx'
 import EducationChrome from './EducationChrome.jsx'
 import { CHAPTERS } from './chapters.js'
-import { TRACK_VH, resolveComposition, resolveQuality } from './quality.js'
-import {
-  HOLDS,
-  clamp01,
-  docForStory,
-  holdProgress,
-  sheetCover,
-  storyProgress,
-} from './timeline.js'
+import { RUNOUT_VH, TRACK_VH, resolveComposition, resolveQuality } from './quality.js'
 import { scrollToY, useScrollFrame, useSmoothScroll } from './scroll.js'
-import {
-  CampusInterlude,
-  ConnectionInterlude,
-  DisciplinesInterlude,
-  IntroInterlude,
-} from './EducationInterludes.jsx'
-import { EducationFooter, FinalCTA } from './EducationOutro.jsx'
+import { EducationFooter } from './EducationOutro.jsx'
 import { sound } from './audio/AudioManager.js'
 import { useAudioInit, useSoundOnChange } from './audio/useAudio.js'
 import { DISCIPLINE_BY_ID } from './chapters.js'
@@ -54,13 +40,7 @@ function measure() {
   }
 }
 
-/** Which surface each editorial chapter puts in front of the scene. */
-const SHEET_TONE = {
-  intro: 'paper',
-  disciplines: 'paper',
-  connection: 'dark',
-  campus: 'paper',
-}
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v)
 
 /** The chapter whose sound is a composed moment rather than a threshold. */
 const CHAPTER_CONNECTION = 4
@@ -138,16 +118,18 @@ function EducationExperience() {
   const [hover, setHover] = useState({ kind: null })
   const [hoveredDiscipline, setHoveredDiscipline] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
-  // True once the reader is past the journey and into the close.
+  // True once the footer has completely covered the stage.
   const [offstage, setOffstage] = useState(false)
+  // And whether the scene has finished catching up with the scroll. The two
+  // together decide when it is safe to stop rendering — see the Canvas below.
+  const [settled, setSettled] = useState(true)
 
   // Scroll and pointer never enter React state: they change continuously and
   // the scene reads them straight out of this ref inside its frame loop.
-  const input = useRef({ progress: 0, pointerX: 0, pointerY: 0, cover: 0 })
+  const input = useRef({ progress: 0, pointerX: 0, pointerY: 0, exposure: 1 })
   const rootRef = useRef(null)
   const cursorRef = useRef(null)
   const trackRef = useRef(null)
-  const holdRefs = useRef({})
 
   const quality = useMemo(
     () => resolveQuality(device.width, device.coarse),
@@ -167,68 +149,51 @@ function EducationExperience() {
   // the position it describes and everything derived from it would trail the
   // scrollbar by that frame.
   const readScroll = useCallback(() => {
-    // Measured against the TRACK, not the document. The page continues past
-    // the journey into a call to action and a footer, and measuring against
-    // total height would let adding a footer compress the story — the tree
-    // would grow faster because there are more links at the bottom.
     const track = trackRef.current
     const top = track ? track.offsetTop : 0
-    const span = track ? track.offsetHeight - innerHeight : 1
-    const doc = span > 0 ? clamp01((scrollY - top) / span) : 0
+    const height = track ? track.offsetHeight : innerHeight
+    const span = Math.max(height - innerHeight, 1)
 
-    // The 3D reads story progress, which holds still while an editorial
-    // chapter has the screen. Everything downstream — camera, chapters,
-    // stage weights, audio — is unchanged and unaware.
-    const story = storyProgress(doc)
-    input.current.progress = story
+    // THE STORY IS SHORTER THAN THE TRACK.
+    //
+    // Progress is measured against the track minus a run-out, so it reaches 1
+    // while the footer is still a good half-screen below the fold. That gap is
+    // the whole point: the scene damps its own progress before the camera
+    // reads it, so the number always arrives at the end slightly before the
+    // picture does. Measuring against the full track meant the footer began
+    // covering the scene at the exact frame progress hit 1 — with the tree
+    // still visibly finishing, and further behind the faster you scrolled.
+    const usable = Math.max(span - innerHeight * RUNOUT_VH, 1)
+    const progress = clamp01((scrollY - top) / usable)
+    input.current.progress = progress
 
-    // Continuous motion in the HTML (the rail, the ribbon) reads this custom
-    // property, so scrolling never re-renders the editorial layers.
+    // How much of the footer has risen into the frame, 0..1 of a viewport.
+    // The footer is in ordinary flow, so this is just where its top edge is.
+    const rise = clamp01((scrollY + innerHeight - (top + height)) / innerHeight)
+
     const root = rootRef.current
-    let cover = 0
     if (root) {
-      root.style.setProperty('--p', story.toFixed(5))
-      root.style.setProperty('--doc', doc.toFixed(5))
-      // One property per editorial section, written straight to the DOM.
-      // This is the whole animation system for those sections: no timers, no
-      // observers, no React work while the reader moves.
-      let surface = 'none'
-      for (const hold of HOLDS) {
-        const el = holdRefs.current[hold.id]
-        if (!el) continue
-        const local = holdProgress(doc, hold.id)
-        const live = local >= 0
-        el.style.setProperty('--s', live ? local.toFixed(4) : '0')
-        // The visibility gate sits OUTSIDE the sheet's own travel — the sheet
-        // is at zero for the first and last hundredth of the hold — so a
-        // section is only ever taken off the compositor while there is
-        // genuinely nothing of it on screen. Cutting it at a point where the
-        // sheet was still a third of the way up is what made these vanish.
-        el.dataset.live = live && local > 0.01 && local < 0.99 ? 'true' : 'false'
-        // Pointer interaction belongs to the settled middle, not to the
-        // travel: a transparent full-screen section must not swallow a click
-        // meant for the scene behind it.
-        el.dataset.open = live && local > 0.26 && local < 0.74 ? 'true' : 'false'
-        if (live) cover = Math.max(cover, sheetCover(local))
-        // Once a sheet is more than half up it owns the surface, and the
-        // header has to take its palette from that rather than staying set
-        // for a dark scene it can no longer see.
-        if (live && local > 0.2 && local < 0.8) surface = SHEET_TONE[hold.id]
-      }
-      root.dataset.sheet = surface
+      // Continuous motion in the HTML (the rail, the ribbon) reads this custom
+      // property, so scrolling never re-renders the editorial layers.
+      root.style.setProperty('--p', progress.toFixed(5))
+      // And the handoff: the fixed layers drift up against the rising footer.
+      root.style.setProperty('--exit', rise.toFixed(4))
     }
 
-    // Handed to the scene so the camera can stand back while a sheet is over
-    // it. This is the only thing the 3D is told about the editorial layer.
-    input.current.cover = cover
+    // How much of the world is still on screen. The scene's ambience follows
+    // it down, so the place stops being audible as it stops being visible
+    // rather than droning on behind an opaque footer.
+    input.current.exposure = 1 - rise
 
-    // Past the end of the track the scene has nothing left to show, so it
-    // releases the page to the close and stops rendering entirely.
-    const past = scrollY > top + span + innerHeight * 0.2
-    setOffstage((was) => (was === past ? was : past))
+    // Covered means covered: the footer has risen a full viewport and there is
+    // nothing of the stage left to see. Note this is NOT the same question as
+    // "has the story finished" — that was the old test, and it is what let the
+    // renderer stop while the scene was still mid-formation.
+    const covered = rise >= 1
+    setOffstage((was) => (was === covered ? was : covered))
 
-    setChapter(chapterFor(story))
-    setMuseumStop(museumStopFor(story))
+    setChapter(chapterFor(progress))
+    setMuseumStop(museumStopFor(progress))
   }, [])
 
   useScrollFrame(readScroll)
@@ -280,10 +245,9 @@ function EducationExperience() {
     if (found < 0) return
     const track = trackRef.current
     if (!track) return
-    // Chapter ranges are in story space; the page scrolls in document space.
-    const doc = docForStory(CHAPTERS[found].range[0])
     scrollToY(
-      track.offsetTop + doc * (track.offsetHeight - innerHeight),
+      track.offsetTop +
+        CHAPTERS[found].range[0] * (track.offsetHeight - innerHeight),
       reducedMotion,
     )
   }
@@ -315,20 +279,9 @@ function EducationExperience() {
     sound('museum.stop', { rate: 1 + now * 0.05 })
   }, []))
 
-  // One ref per editorial section, so the scroll handler can write its `--s`
-  // straight to the DOM without a render.
-  const bindHold = (id) => ({
-    innerRef: (el) => {
-      holdRefs.current[id] = el
-    },
-  })
-
-  // The list and the branches are two ways of asking the same question, so
-  // they resolve to one focus — and the list sounds like the branch it points
-  // at, using the discipline textures the audio layer already has.
-  const handleDisciplineFocus = useCallback((id) => {
-    setHoveredDiscipline(id)
-    if (id && DISCIPLINE_BY_ID[id]) sound(`disc.${id}`)
+  // Reported from inside the frame loop, and only when it flips.
+  const handleSettled = useCallback((value) => {
+    setSettled((was) => (was === value ? was : value))
   }, [])
 
   const handleHoverChange = (next) => {
@@ -340,7 +293,7 @@ function EducationExperience() {
   const interactive = Boolean(hover.kind) || Boolean(hoveredDiscipline)
 
   return (
-    <div className="edu" ref={rootRef} data-chapter={chapter} data-past={offstage} data-sheet="none">
+    <div className="edu" ref={rootRef} data-chapter={chapter} data-past={offstage}>
       {/* Painted in CSS rather than as a scene background: the canvas has to
           stay transparent so the behind-layer typography can be occluded by
           geometry rather than covered by a clear colour. */}
@@ -352,9 +305,12 @@ function EducationExperience() {
           data-ready={ready}
           dpr={[1, throttled ? 1 : quality.maxDpr]}
           gl={{ alpha: true, antialias: true, powerPreference: 'high-performance' }}
-          // Nothing to show once the reader is into the close, and a WebGL
-          // scene nobody can see is the most expensive thing on a page.
-          frameloop={offstage ? 'never' : 'always'}
+          // Stop only when the footer has covered the stage AND the scene has
+          // caught up with the scroll. Stopping on coverage alone froze the
+          // loop mid-formation whenever the reader arrived faster than the
+          // scene's own damping — leaves half-built, and stuck there on the
+          // way back up. Now it finishes behind the footer and stops after.
+          frameloop={offstage && settled ? 'never' : 'always'}
           camera={{ fov: 34, position: [1.05, 0.72, 3.95], near: 0.08, far: 220 }}
           onCreated={() => setReady(true)}
         >
@@ -371,6 +327,8 @@ function EducationExperience() {
               chapter={chapter}
               focusDiscipline={hoveredDiscipline}
               onHoverChange={handleHoverChange}
+              covered={offstage}
+              onSettled={handleSettled}
             />
           </Suspense>
         </Canvas>
@@ -404,18 +362,6 @@ function EducationExperience() {
         </div>
       ) : null}
 
-      {/* The editorial chapters. They sit inside the journey rather than after
-          it: each occupies a hold in timeline.js where the story stands still
-          and a paper surface rises over the scene. */}
-      <IntroInterlude {...bindHold('intro')} />
-      <DisciplinesInterlude
-        {...bindHold('disciplines')}
-        hovered={hoveredDiscipline}
-        onHover={handleDisciplineFocus}
-      />
-      <ConnectionInterlude {...bindHold('connection')} />
-      <CampusInterlude {...bindHold('campus')} />
-
       {/* The scroll track. The scene is fixed behind it; this only exists to
           give the page a length for the journey to travel along. */}
       <div
@@ -426,7 +372,6 @@ function EducationExperience() {
       />
 
       {/* And the close, in ordinary document flow. */}
-      <FinalCTA onNavigate={scrollToChapter} />
       <EducationFooter onNavigate={scrollToChapter} />
     </div>
   )

@@ -63,19 +63,28 @@ export function resolveComposition(width) {
 }
 
 /**
- * Total scroll length of the journey.
+ * Total scroll length of the journey, and the run-out at the end of it.
  *
- * 1100vh paced the eight chapters, and that number is the fixed point: the 3D
- * should run at exactly the speed it was tuned at whatever else the page grows.
+ * 1000vh of scroll paces the eight chapters, and that is the number the whole
+ * thing is tuned against. RUNOUT is extra track BEYOND the end of the story:
+ * scroll that exists purely so progress can reach 1 — and the scene can settle
+ * on it — while the footer is still below the fold.
  *
- * The editorial chapters occupy holds inside the same track, and those holds
- * now contain their own entrance and exit rather than bleeding into the story
- * either side of them (see timeline.js) — which is what stopped the tree
- * growing behind a half-risen sheet, and which made the holds longer. They are
- * a little over half the track. 1100 / (0.625 / 1.26) ≈ 2218.
+ * Without it, progress hit 1 at exactly the scroll position where the footer's
+ * top edge touched the bottom of the viewport. That is fine for the number and
+ * wrong for the picture, because the scene damps its own progress before the
+ * camera reads it: the value said "finished" while the tree was visibly still
+ * a few tenths behind, and the footer then slid over a growth that had not
+ * happened yet. The faster you scrolled, the further behind it was.
  *
- * The call to action and the footer are NOT in here: they follow the track in
- * ordinary document flow, which is why scroll progress is measured against
- * this element rather than against the document.
+ * So the track is the story plus the run-out, and the reader measures progress
+ * against the story part alone.
+ *
+ * The footer is NOT in here: it follows the track in ordinary document flow,
+ * which is why scroll progress is measured against this element rather than
+ * against the document.
  */
-export const TRACK_VH = 2220
+export const TRACK_VH = 1160
+
+/** Viewport heights of settle between the story ending and the footer arriving. */
+export const RUNOUT_VH = 0.6

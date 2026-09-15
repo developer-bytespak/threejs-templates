@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import {
@@ -149,7 +149,7 @@ const asLevel = (rate, scale) => clamp01(rate * scale)
 /** Spread of each weight over the scroll, inverted. See `asLevel`. */
 const SCALE = { wood: 2.2, leaf: 1.0, campus: 1.3, grow: 1.7 }
 
-function SceneAudio({ stage }) {
+function SceneAudio({ stage, covered = false }) {
   // One checker per weight, built once. Grouping by key means each frame does
   // a handful of numeric comparisons over a fixed array and touches nothing
   // else.
@@ -178,9 +178,39 @@ function SceneAudio({ stage }) {
     started: false,
   })
 
+  /**
+   * Silence, when there is nothing left to see.
+   *
+   * This is an effect rather than a line in the frame loop because the frame
+   * loop is exactly what stops. The page stops rendering once the footer has
+   * covered the stage, and every level below is written from inside `useFrame`
+   * — so whatever was sounding at that moment simply stayed sounding, at the
+   * gain it happened to have. Arrive at the footer mid-canopy and the leaves
+   * kept forming, audibly, forever, over a page with no tree on it.
+   *
+   * Zeroing the rate stores as well as the gains matters: on the way back up
+   * the first frame would otherwise see a delta measured against a value from
+   * before the gap and report a formation that never happened. Same for the
+   * camera, which would report one enormous lurch of air.
+   */
+  useEffect(() => {
+    if (!covered) return undefined
+    woodLevel(0)
+    leafLevel(0)
+    campusLevel(0)
+    growthLevel(0)
+    airLevel(0)
+    distantLevel(0)
+    beds.current = { growth: 0, distant: 0, wood: 0, leaf: 0, campus: 0 }
+    rates.current = {}
+    cam.current.started = false
+    return undefined
+  }, [covered])
+
   useFrame((state, delta) => {
     const s = stage.current
     if (!s) return
+    if (covered) return
     const step = Math.min(delta, 0.1)
 
     for (let i = 0; i < checks.length; i += 1) {
@@ -273,7 +303,10 @@ function SceneAudio({ stage }) {
 
     // The campus, heard before it is seen and then all around: faint while it
     // is only glimpsed through the foliage, full once the clearing is open.
-    const near = Math.max(s.campusVisibility * 0.45, s.campusReveal)
+    // Scaled by how much of the world is still on screen, so the place fades
+    // out as the footer covers it rather than cutting when the loop stops.
+    const near =
+      Math.max(s.campusVisibility * 0.45, s.campusReveal) * (s.exposure ?? 1)
     if (Math.abs(near - beds.current.distant) > 0.02) {
       beds.current.distant = near
       distantLevel(near)

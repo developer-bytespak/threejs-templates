@@ -142,10 +142,8 @@ export function createStageState() {
     smoothed: 0,
     pointerX: 0,
     pointerY: 0,
-    // How much of the screen an editorial sheet is covering. Not derived from
-    // progress like everything else below — it comes from the HTML layer, and
-    // it is the only thing the scene is told about it.
-    cover: 0,
+    // How much of the stage is still on screen; written by the scroll reader.
+    exposure: 1,
     hoveredDiscipline: null,
     pointerDiscipline: null,
     hoveredBuilding: null,

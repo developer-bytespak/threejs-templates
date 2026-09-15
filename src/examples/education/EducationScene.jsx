@@ -24,6 +24,8 @@ function EducationScene({
   chapter,
   focusDiscipline,
   onHoverChange,
+  covered,
+  onSettled,
 }) {
   const rig = useEducationModels()
 
@@ -32,6 +34,11 @@ function EducationScene({
   const stage = useRef(createStageState())
 
   const bounds = useMemo(() => ({ radius: 16, height: 26 }), [])
+
+  // Whether the damped progress has caught up with the scroll. Held in a ref
+  // and reported only when it flips, so this costs one comparison a frame and
+  // a render every few seconds at most.
+  const caught = useRef(true)
 
   // Writers, handed down so children never mutate a prop. Hover also goes out
   // to React so the HTML layer can show a label for it, but only on change —
@@ -76,6 +83,20 @@ function EducationScene({
     )
     deriveStage(s.smoothed, s)
 
+    // How much of the stage the reader can still see, handed down from the
+    // scroll reader. The audio layer follows it so the world stops sounding as
+    // it stops being visible.
+    s.exposure = input.current.exposure ?? 1
+
+    // Settled means the picture agrees with the number. The page uses this to
+    // decide when it may stop rendering: stopping while this is false is
+    // exactly how a half-grown tree gets frozen behind the footer.
+    const behind = Math.abs(s.smoothed - input.current.progress) > 0.0004
+    if (behind === caught.current) {
+      caught.current = !behind
+      onSettled(!behind)
+    }
+
     // The discipline list in the HTML and the pointer over the branches are
     // two ways of asking for the same thing, so they resolve to one focus.
     s.hoveredDiscipline = focusDiscipline ?? s.pointerDiscipline ?? null
@@ -87,11 +108,6 @@ function EducationScene({
       s.pointerX = THREE.MathUtils.damp(s.pointerX, input.current.pointerX, 2.4, step)
       s.pointerY = THREE.MathUtils.damp(s.pointerY, input.current.pointerY, 2.4, step)
     }
-
-    // How far an editorial sheet has covered the frame. Damped a little
-    // harder than the sheet itself moves, so the camera's answer to it feels
-    // like weight rather than like a second copy of the same animation.
-    s.cover = THREE.MathUtils.damp(s.cover, input.current.cover ?? 0, 3.2, step)
   }, -1)
 
   const treeLive = TREE_CHAPTERS.has(chapter)
@@ -135,7 +151,7 @@ function EducationScene({
       {/* Reads the weights computed above on the frame loop that is already
           running. No second animation frame, no state, nothing allocated per
           frame — see SceneAudio for why it lives inside the Canvas. */}
-      <SceneAudio stage={stage} />
+      <SceneAudio stage={stage} covered={covered} />
     </>
   )
 }

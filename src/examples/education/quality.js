@@ -62,5 +62,20 @@ export function resolveComposition(width) {
   return { x: 0, y: 0, yBase: 0.26 }
 }
 
-/** Total scroll length. Long enough to pace eight chapters without dragging. */
-export const TRACK_VH = 1100
+/**
+ * Total scroll length of the journey.
+ *
+ * 1100vh paced the eight chapters, and that number is the fixed point: the 3D
+ * should run at exactly the speed it was tuned at whatever else the page grows.
+ *
+ * The editorial chapters occupy holds inside the same track, and those holds
+ * now contain their own entrance and exit rather than bleeding into the story
+ * either side of them (see timeline.js) — which is what stopped the tree
+ * growing behind a half-risen sheet, and which made the holds longer. They are
+ * a little over half the track. 1100 / (0.625 / 1.26) ≈ 2218.
+ *
+ * The call to action and the footer are NOT in here: they follow the track in
+ * ordinary document flow, which is why scroll progress is measured against
+ * this element rather than against the document.
+ */
+export const TRACK_VH = 2220

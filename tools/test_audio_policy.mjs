@@ -83,7 +83,7 @@ const { initAudio, sound, setEnabled, audioState, teardownAudio } = mod
  */
 async function freshStart() {
   teardownAudio()
-  globalThis.localStorage.setItem('c2:sound', 'off')
+  globalThis.localStorage.setItem('bytes:sound', 'off')
   initAudio()
   mod.toggleEnabled()
   await new Promise((r) => setTimeout(r, 20))
@@ -147,11 +147,11 @@ check('state reports muted', audioState().enabled === false)
 setEnabled(true)
 now += 500
 check('plays again when unmuted', sound('ui.click') === true)
-check('preference persisted', globalThis.localStorage.getItem('c2:sound') === 'on')
+check('preference persisted', globalThis.localStorage.getItem('bytes:sound') === 'on')
 
 console.log('\nthe preference survives a reload')
 check('pressing again mutes', mod.toggleEnabled() === false)
-check('  ...and that is what is stored', globalThis.localStorage.getItem('c2:sound') === 'off')
+check('  ...and that is what is stored', globalThis.localStorage.getItem('bytes:sound') === 'off')
 teardownAudio()
 initAudio()
 check('a reload comes back muted', audioState().enabled === false)
@@ -163,7 +163,7 @@ console.log('\na reload with sound already on')
 // The regression that shipped: 'on' was saved, so the control reported itself
 // on, while the page was silent because no gesture had unlocked anything yet.
 teardownAudio()
-globalThis.localStorage.setItem('c2:sound', 'on')
+globalThis.localStorage.setItem('bytes:sound', 'on')
 initAudio()
 check('the preference survives', audioState().enabled === true)
 check('  ...but nothing is unlocked', audioState().unlocked === false)
@@ -174,11 +174,11 @@ check('one press starts it rather than muting it', mod.toggleEnabled() === true)
 await new Promise((r) => setTimeout(r, 20))
 check('  ...now it is audible', mod.isAudible() === true)
 check('  ...and the preference is untouched',
-  globalThis.localStorage.getItem('c2:sound') === 'on')
+  globalThis.localStorage.getItem('bytes:sound') === 'on')
 now += 5000
 check('  ...and sound plays', sound('ui.click') === true)
 check('a second press mutes, as normal', mod.toggleEnabled() === false)
-check('  ...and that is stored', globalThis.localStorage.getItem('c2:sound') === 'off')
+check('  ...and that is stored', globalThis.localStorage.getItem('bytes:sound') === 'off')
 
 console.log('\nreduced motion')
 globalThis.__media = { '(prefers-reduced-motion: reduce)': true }
@@ -201,7 +201,7 @@ check('silent again after teardown', sound('ui.click') === false)
 console.log('\nno AudioContext at all (an old or locked-down browser)')
 delete globalThis.AudioContext
 globalThis.__media = {}
-globalThis.localStorage.setItem('c2:sound', 'off')
+globalThis.localStorage.setItem('bytes:sound', 'off')
 initAudio()
 mod.toggleEnabled()
 check('marks itself failed instead of throwing', audioState().failed === true)

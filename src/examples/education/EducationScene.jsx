@@ -10,6 +10,7 @@ import KnowledgeArtifacts from './KnowledgeArtifacts.jsx'
 import KnowledgeCampus from './KnowledgeCampus.jsx'
 import WorldLabels from './WorldLabels.jsx'
 import Motes from './Motes.jsx'
+import SceneAudio from './audio/SceneAudio.jsx'
 
 /** Which chapters offer which pointer interactions. */
 const TREE_CHAPTERS = new Set([2, 3, 4])
@@ -86,6 +87,11 @@ function EducationScene({
       s.pointerX = THREE.MathUtils.damp(s.pointerX, input.current.pointerX, 2.4, step)
       s.pointerY = THREE.MathUtils.damp(s.pointerY, input.current.pointerY, 2.4, step)
     }
+
+    // How far an editorial sheet has covered the frame. Damped a little
+    // harder than the sheet itself moves, so the camera's answer to it feels
+    // like weight rather than like a second copy of the same animation.
+    s.cover = THREE.MathUtils.damp(s.cover, input.current.cover ?? 0, 3.2, step)
   }, -1)
 
   const treeLive = TREE_CHAPTERS.has(chapter)
@@ -125,6 +131,11 @@ function EducationScene({
 
       <WorldLabels rig={rig} stage={stage} quality={quality} />
       <Motes stage={stage} quality={quality} bounds={bounds} />
+
+      {/* Reads the weights computed above on the frame loop that is already
+          running. No second animation frame, no state, nothing allocated per
+          frame — see SceneAudio for why it lives inside the Canvas. */}
+      <SceneAudio stage={stage} />
     </>
   )
 }

@@ -837,6 +837,19 @@
   outline-offset: 5px;
 }
 
+/* ---- the sound control
+   Shared with /construction-two; this only supplies the palette. The header
+   sits over a dark scene at every chapter, so the tokens are fixed rather
+   than following a zone the way the other route's navbar does. */
+.edu-header .c2snd {
+  --snd-ink: rgba(244, 241, 234, 0.92);
+  --snd-dim: rgba(244, 241, 234, 0.55);
+  --snd-line: rgba(244, 241, 234, 0.2);
+  --snd-accent: #e0a45f;
+  --snd-ease: cubic-bezier(0.16, 0.84, 0.24, 1);
+  margin-left: clamp(14px, 1.6vw, 26px);
+}
+
 .edu-menu-toggle {
   display: none;
   pointer-events: auto;
@@ -1235,4 +1248,969 @@
   .edu-loader__seed {
     animation: none;
   }
+}
+
+/* ==================================================================
+   THE EDITORIAL CHAPTERS
+   ==================================================================
+   Sections that sit inside the 3D timeline rather than after it. While one is
+   on screen the story holds still (see timeline.js) and a paper surface rises
+   over the scene, so the reader changes register without leaving the journey.
+
+   EVERYTHING HERE IS A CLAMP OF ONE NUMBER. The scroll handler writes `--s`
+   (0..1 through this section) onto the section element and nothing else
+   happens per frame: no timers, no observers, no re-renders. Reversing is
+   correct by construction, exactly as it is for the 3D.
+
+   `--d` is registered so it can be transitioned by the two sections that are
+   not scroll-pinned — the CTA and the footer, which draw on arrival instead. */
+@property --d {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+.edu-int {
+  --s: 0;
+  --ease-int: cubic-bezier(0.16, 0.84, 0.24, 1);
+
+  /* Up over the first quarter of the hold, down over the last quarter, full
+     in between — and, critically, flat at zero at both ends. The hold owns its
+     own entrance and exit now (see timeline.js), so the surface finishes
+     travelling well before the section is taken off the compositor. Nothing
+     pops on or off. */
+  --sheet: clamp(0, calc(min((var(--s) - 0.04) * 4.17, (0.96 - var(--s)) * 4.17)), 1);
+  /* Content trails the sheet on the way in, so type never arrives before its
+     ground, and leads it on the way out, so the surface wipes over an empty
+     page rather than over a paragraph mid-sentence. */
+  --in: clamp(0, calc((var(--s) - 0.24) * 5.6), 1);
+  --out: clamp(0, calc((var(--s) - 0.66) * 5), 1);
+
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+/* Out of the way entirely when its hold is nowhere near, so it costs nothing
+   and cannot trap a pointer over the 3D scene. The gate is set where `--sheet`
+   is already exactly zero — at 1% and 99% of the hold — so this is never the
+   thing that removes something the reader can still see. */
+.edu-int[data-live='false'] {
+  visibility: hidden;
+}
+
+/* Interaction belongs to the settled middle of a hold, not to its travel. */
+.edu-int[data-open='true'] {
+  pointer-events: auto;
+}
+
+/* ---- the surface
+   Rises from below, holds, and leaves downward — the editorial chapter is a
+   sheet drawn over the world rather than a page that replaced it. The world is
+   still there underneath, and at the edges of the hold you can see it.
+
+   It is also the clip. `overflow: hidden` plus a child that counter-moves by
+   the same distance means the copy is revealed and hidden by the sheet's own
+   edge: two transforms, both composited, no clip-path to repaint per frame,
+   and no way for a line of type to exist outside the paper. Both translations
+   are percentages of the same 100vh box, so they cancel exactly. */
+.edu-int__sheet {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--edu-sheet, #efece4);
+  transform: translate3d(0, calc((1 - var(--sheet)) * 102%), 0);
+  will-change: transform;
+}
+
+.edu-int__hold {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  transform: translate3d(0, calc((1 - var(--sheet)) * -102%), 0);
+  /* One opacity for the whole exit. Every reveal below carries its own
+     entrance, staggered; if each also carried its own exit they would leave at
+     four different times and the last survivor would be the thing that
+     "suddenly disappeared". Fading the group is what makes the departure read
+     as one movement. */
+  opacity: calc(1 - var(--out));
+  will-change: transform, opacity;
+}
+
+.edu-int[data-tone='dark'] {
+  --edu-sheet: #0d1015;
+  --edu-ink: rgba(244, 241, 234, 0.94);
+  --edu-ink-dim: rgba(244, 241, 234, 0.58);
+  --edu-ink-faint: rgba(244, 241, 234, 0.3);
+  --edu-line: rgba(244, 241, 234, 0.2);
+}
+
+.edu-int[data-tone='paper'] {
+  --edu-sheet: #efece4;
+  --edu-ink: #14171c;
+  --edu-ink-dim: rgba(20, 23, 28, 0.62);
+  --edu-ink-faint: rgba(20, 23, 28, 0.38);
+  --edu-line: rgba(20, 23, 28, 0.18);
+}
+
+.edu-int__inner {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  align-items: center;
+  gap: clamp(28px, 5vw, 90px);
+  width: min(1320px, 100%);
+  margin: 0 auto;
+  padding: 0 clamp(20px, 5vw, 76px);
+  color: var(--edu-ink);
+}
+
+/* The disciplines interlude has no figure, so its headline gets the room. */
+.edu-int__col--wide {
+  grid-column: 1 / -1;
+  max-width: 1080px;
+}
+
+.edu-int__col--wide .edu-int__head { font-size: clamp(2rem, 5vw, 4.2rem); }
+
+/* ---- type */
+.edu-int__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 clamp(18px, 2.4vw, 30px);
+  font-size: 0.625rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--edu-ink-faint);
+  opacity: var(--in);
+}
+
+.edu-int__eyebrow i {
+  display: block;
+  width: clamp(24px, 4vw, 54px);
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(var(--in));
+  transform-origin: left;
+}
+
+/* Sized for the column it actually sits in, not for the viewport. At 5.2vw a
+   two-column interlude wrapped every headline onto four lines and pushed the
+   supporting copy off the bottom of the screen. */
+.edu-int__head {
+  margin: 0;
+  font-size: clamp(1.75rem, 3.9vw, 3.3rem);
+  font-weight: 500;
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.edu-int__head--sm {
+  font-size: clamp(1.5rem, 2.9vw, 2.5rem);
+  letter-spacing: -0.02em;
+}
+
+/* Each line rises out of its own mask. Masking rather than fading is what
+   keeps this from being the generic fade-up the brief rules out — the line
+   arrives from behind an edge, the way type is set. */
+/* The mask needs more room than the line box gives it. At line-height 0.98
+   the em box is shorter than the glyphs, so `overflow: hidden` cuts the
+   ascenders and descenders off even at rest — the headline arrived looking
+   sliced. The padding opens the mask and the negative margin takes the space
+   back, so nothing moves. */
+.edu-int__line {
+  display: block;
+  overflow: hidden;
+  padding: 0.12em 0 0.16em;
+  margin: -0.12em 0 -0.16em;
+}
+
+.edu-int__line > span {
+  display: block;
+  --l: clamp(0, calc((var(--s) - 0.24 - var(--i, 0) * 0.03) * 5.6), 1);
+  transform: translate3d(0, calc((1 - var(--l)) * 105%), 0);
+  opacity: var(--l);
+}
+
+.edu-int__body {
+  max-width: 42ch;
+  margin-top: clamp(20px, 2.6vw, 34px);
+  color: var(--edu-ink-dim);
+  font-size: clamp(0.875rem, 1.05vw, 1rem);
+  line-height: 1.55;
+  opacity: var(--in);
+  transform: translate3d(0, calc((1 - var(--in)) * 14px), 0);
+}
+
+.edu-int__body p { margin: 0; }
+
+.edu-int__pull {
+  max-width: 20ch;
+  margin: clamp(20px, 2.6vw, 34px) 0 0;
+  font-size: clamp(1rem, 1.6vw, 1.4rem);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--edu-ink-dim);
+}
+
+.edu-int__note {
+  margin-top: clamp(22px, 3vw, 40px);
+  font-size: 0.625rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--edu-ink-faint);
+  opacity: var(--in);
+}
+
+.edu-int__figure {
+  position: relative;
+  opacity: var(--in);
+}
+
+.edu-int__caption {
+  margin: 14px 0 0;
+  font-size: 0.5625rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--edu-ink-faint);
+}
+
+/* ==================================================================
+   DIAGRAMS
+   ==================================================================
+   Every stroke carries pathLength="1", so its dash array is a fraction of
+   itself whatever its real length, and drawing is one declaration. `--i` is
+   the element's place in the construction order; `--reach` turns the section's
+   progress into that same scale, so the drawing assembles part by part.
+
+   This is why they construct rather than fade: a fade is the finished picture
+   at lower opacity, which tells the reader nothing about how the thing is
+   built. */
+.edu-dia {
+  /* The construction has to COMPLETE while the section is still readable.
+     At the old rate the deepest element (--i: 9) only finished at s = 0.87, by
+     which point the page was already fading out from under it — the connection
+     diagram's core never once drew in full. This reaches 10 at s = 0.655,
+     comfortably inside the hold. */
+  --reach: calc((var(--s, 0) - 0.2) * 22);
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.edu-dia path,
+.edu-dia rect,
+.edu-dia circle {
+  --d: clamp(0, calc(var(--reach) - var(--i, 0)), 1);
+}
+
+.edu-dia path,
+.edu-dia rect,
+.edu-dia circle[pathLength],
+.edu-dia__ring,
+.edu-dia__core circle {
+  /* A technical drawing has to be legible as line work. At the section's
+     hairline value these read as smudges on paper. */
+  stroke: var(--edu-ink-faint);
+  stroke-width: 1.1;
+  fill: none;
+  stroke-dasharray: 1;
+  stroke-dashoffset: calc(1 - var(--d));
+  vector-effect: non-scaling-stroke;
+}
+
+.edu-dia__stem,
+.edu-dia__site,
+.edu-dia__ring {
+  stroke: var(--edu-ink-dim);
+}
+
+.edu-dia__chord {
+  stroke: var(--edu-line);
+  opacity: 0.75;
+}
+
+.edu-dia__plot {
+  stroke: var(--edu-ink-dim);
+}
+
+/* Filled marks grow in rather than draw: a five-pixel circle drawing itself
+   reads as a glitch.
+
+   The radius is animated, not a transform. `transform: scale()` with
+   `transform-box: fill-box` should scale a circle about its own centre, and
+   when that box does not apply the origin falls back to the viewport — so
+   every node slid toward the middle of the drawing as it came in and only
+   landed in the right place once fully drawn. Measured: nodes floating well
+   away from the branch tips they belong to, for the whole animation. `r` is a
+   geometry property, it cannot move anything, and where it is unsupported the
+   attribute stands and the mark simply fades. */
+.edu-dia__node,
+.edu-dia__seed,
+.edu-dia__pins circle {
+  fill: var(--accent, var(--edu-ink));
+  stroke: none;
+  stroke-dasharray: none;
+  stroke-dashoffset: 0;
+  opacity: var(--d);
+  r: calc(var(--nr, 5) * 1px * var(--d));
+}
+
+.edu-dia__num,
+.edu-dia__word {
+  fill: var(--edu-ink-faint);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-anchor: middle;
+  text-transform: uppercase;
+  opacity: var(--d);
+  stroke: none;
+}
+
+.edu-dia__core circle { stroke: var(--edu-ink); }
+.edu-dia__core path { stroke: var(--edu-ink-dim); }
+
+/* ==================================================================
+   THE FIVE, AS A LIST
+   ================================================================== */
+.edu-list {
+  margin: clamp(26px, 3.6vw, 50px) 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--edu-line);
+}
+
+.edu-list__row {
+  /* All five have to be IN by the middle of the hold — measured at s = 0.5 the
+     fifth row was still at 36% and reading as a mistake rather than as a
+     stagger. Same shape, tightened so the last row lands at 0.48. */
+  --r: clamp(0, calc((var(--s) - 0.24 - var(--i) * 0.028) * 8), 1);
+  border-bottom: 1px solid var(--edu-line);
+  opacity: var(--r);
+  /* Displaced horizontally, not vertically: the rows arrive along the rule
+     they hang from rather than floating up from nowhere. */
+  transform: translate3d(calc((1 - var(--r)) * -26px), 0, 0);
+  /* Short, and only so the dimming on hover has somewhere to travel. A long
+     transition on a scroll-driven value just puts the row behind the page. */
+  transition: opacity 0.25s linear;
+}
+
+.edu-list__row button {
+  position: relative;
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 7.5rem) minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: clamp(10px, 2vw, 30px);
+  width: 100%;
+  padding: clamp(13px, 1.7vw, 22px) 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transition: opacity 0.4s ease;
+}
+
+.edu-list__row[data-dim='true'] { opacity: calc(var(--r) * 0.4); }
+
+.edu-list__num {
+  font-size: 0.6875rem;
+  letter-spacing: 0.2em;
+  color: var(--edu-ink-faint);
+}
+
+.edu-list__word {
+  font-size: clamp(1.25rem, 2.6vw, 2.1rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  transition: color 0.4s ease, transform 0.5s var(--ease-int);
+}
+
+.edu-list__row[data-on='true'] .edu-list__word {
+  color: var(--accent);
+  transform: translate3d(8px, 0, 0);
+}
+
+.edu-list__name {
+  font-size: clamp(0.8125rem, 1.1vw, 0.95rem);
+  color: var(--edu-ink-dim);
+}
+
+.edu-list__meta {
+  font-size: 0.5625rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--edu-ink-faint);
+  white-space: nowrap;
+}
+
+/* The connector: a hairline that runs out under the active row toward the
+   tree, which is where the same discipline is lighting up. */
+.edu-list__line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.55s var(--ease-int);
+}
+
+.edu-list__row[data-on='true'] .edu-list__line { transform: scaleX(1); }
+
+/* ==================================================================
+   CAMPUS FIGURES
+   ==================================================================
+   Each takes the lead in turn, then steps back into a row. `--lead` is how
+   dominant this one is right now — driven by the section's own progress, so
+   the composition rearranges as the reader moves instead of three numbers
+   fading up together. */
+.edu-stats {
+  margin: clamp(24px, 3.4vw, 46px) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: clamp(4px, 0.8vw, 12px);
+}
+
+.edu-stats__item {
+  --t: clamp(0, calc((var(--s) - 0.22 - var(--i) * 0.145) * 7), 1);
+  /* Dominant while this one is the newest arrival, then handed on — except the
+     last, whose hand-off point falls past the end of the hold, so it holds the
+     lead until the section leaves rather than shrinking back into a row of
+     three equals with nothing dominant. */
+  --lead: clamp(0, calc(min((var(--s) - 0.22 - var(--i) * 0.145) * 9, (0.35 + var(--i) * 0.3 - var(--s)) * 9)), 1);
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: clamp(14px, 2vw, 28px);
+  padding: clamp(8px, 1.2vw, 16px) 0;
+  opacity: var(--t);
+  transform: translate3d(calc((1 - var(--t)) * -18px), 0, 0);
+}
+
+/* Explicit rows. Auto-placement put the label and the note in the same cell,
+   so the note printed on top of the label. */
+.edu-stats__value {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  font-size: clamp(2.2rem, calc(3.4vw + var(--lead) * 2.6vw), 6rem);
+  font-weight: 400;
+  line-height: 0.86;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+  color: var(--edu-ink);
+  transition: color 0.5s ease;
+}
+
+.edu-stats__label {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  font-size: clamp(0.75rem, 1vw, 0.9375rem);
+  letter-spacing: 0.02em;
+  color: var(--edu-ink);
+}
+
+.edu-stats__note {
+  grid-column: 2;
+  grid-row: 2;
+  font-size: 0.5625rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--edu-ink-faint);
+  opacity: var(--lead);
+}
+
+.edu-stats__rule {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--edu-line);
+  transform: scaleX(var(--t));
+  transform-origin: left;
+}
+
+/* ==================================================================
+   THE CLOSE — CTA AND FOOTER
+   ==================================================================
+   The only parts of the page in ordinary document flow. Everything above is a
+   fixed stage with a track in front of it, which is the right shape for a
+   journey and the wrong shape for a footer: a footer should arrive because you
+   reached the end of the page, not because a number crossed a threshold.
+
+   Their diagrams draw on arrival rather than on scroll, so `--d` transitions
+   instead of being computed — that is what the @property registration at the
+   top of this block is for. */
+.edu-cta,
+.edu-foot {
+  --edu-sheet: #0b0e12;
+  --edu-ink: rgba(244, 241, 234, 0.94);
+  --edu-ink-dim: rgba(244, 241, 234, 0.6);
+  --edu-ink-faint: rgba(244, 241, 234, 0.34);
+  --edu-line: rgba(244, 241, 234, 0.16);
+  --ease-int: cubic-bezier(0.16, 0.84, 0.24, 1);
+
+  position: relative;
+  z-index: 6;
+  background: var(--edu-sheet);
+  color: var(--edu-ink);
+}
+
+.edu-cta [class*='edu-dia'],
+.edu-foot [class*='edu-dia'] {
+  transition: --d 0.9s var(--ease-int);
+  transition-delay: calc(var(--i, 0) * 85ms);
+}
+
+.edu-cta[data-drawn='true'] .edu-dia path,
+.edu-cta[data-drawn='true'] .edu-dia rect,
+.edu-cta[data-drawn='true'] .edu-dia circle,
+.edu-foot[data-drawn='true'] .edu-dia path,
+.edu-foot[data-drawn='true'] .edu-dia rect,
+.edu-foot[data-drawn='true'] .edu-dia circle {
+  --d: 1;
+}
+
+.edu-cta .edu-dia path,
+.edu-cta .edu-dia rect,
+.edu-cta .edu-dia circle,
+.edu-foot .edu-dia path,
+.edu-foot .edu-dia rect,
+.edu-foot .edu-dia circle {
+  --d: 0;
+  transition: --d 0.9s var(--ease-int) calc(var(--i, 0) * 85ms);
+}
+
+/* ---- the final invitation */
+.edu-cta {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  align-items: center;
+  gap: clamp(32px, 6vw, 96px);
+  min-height: 92vh;
+  padding: clamp(80px, 12vh, 170px) clamp(20px, 5vw, 76px);
+}
+
+.edu-cta__head {
+  margin: 0;
+  font-size: clamp(2.4rem, 6.4vw, 5.6rem);
+  font-weight: 500;
+  line-height: 0.94;
+  letter-spacing: -0.04em;
+  /* Clipped rather than faded, so it arrives the way the interlude heads do.
+     The clip box needs more room than the line box gives it: at line-height
+     0.94 the em box is shorter than the glyphs, so `inset(0 0 0 0)` — the
+     FINISHED state — still sliced the descenders off. The padding opens the
+     box and the negative margin takes the space back, so nothing moves and
+     nothing is cut. The horizontal pair is for the tight tracking, which pulls
+     the last glyph past the right edge. */
+  padding: 0.15em 0.06em 0.2em;
+  margin: -0.15em -0.06em -0.2em;
+  clip-path: inset(0 0 calc((1 - var(--reveal, 0)) * 100%) 0);
+  transform: translate3d(0, calc((1 - var(--reveal, 0)) * 18px), 0);
+  transition: clip-path 0.9s var(--ease-int), transform 0.9s var(--ease-int);
+}
+
+.edu-cta[data-drawn='true'] { --reveal: 1; }
+
+.edu-cta__body {
+  max-width: 34ch;
+  margin-top: clamp(20px, 2.6vw, 34px);
+  color: var(--edu-ink-dim);
+  font-size: clamp(0.9375rem, 1.15vw, 1.0625rem);
+  line-height: 1.55;
+  opacity: var(--reveal, 0);
+  transition: opacity 0.7s 0.25s linear;
+}
+
+.edu-cta__body p { margin: 0; }
+
+.edu-cta__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(18px, 3vw, 48px);
+  margin-top: clamp(30px, 4vw, 56px);
+  opacity: var(--reveal, 0);
+  transition: opacity 0.7s 0.4s linear;
+}
+
+/* ---- text links, not buttons
+   A rule that draws under the label on hover, and an arrow that steps. No
+   pill, no fill, no box — the page has no other rounded shapes in it. */
+.edu-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font: inherit;
+  font-size: clamp(0.8125rem, 1vw, 0.9375rem);
+  letter-spacing: 0.02em;
+  color: var(--edu-ink-dim);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transition: color 0.35s ease;
+}
+
+.edu-link--lead {
+  font-size: clamp(0.9375rem, 1.35vw, 1.25rem);
+  color: var(--edu-ink);
+}
+
+.edu-link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(var(--u, 0));
+  transform-origin: left;
+  transition: transform 0.5s var(--ease-int);
+}
+
+.edu-link:hover,
+.edu-link:focus-visible { color: var(--edu-ink); --u: 1; }
+
+.edu-link i {
+  font-style: normal;
+  transition: transform 0.45s var(--ease-int);
+}
+
+.edu-link:hover i,
+.edu-link:focus-visible i { transform: translate(4px, -4px); }
+
+/* ---- the footer */
+.edu-foot {
+  padding: clamp(56px, 8vh, 110px) clamp(20px, 5vw, 76px) clamp(26px, 4vh, 44px);
+}
+
+.edu-foot__cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: clamp(36px, 5vh, 66px);
+}
+
+.edu-foot__ask {
+  margin: 0;
+  font-size: clamp(1.4rem, 3.4vw, 2.8rem);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+.edu-foot__rule {
+  display: block;
+  height: 1px;
+  background: var(--edu-line);
+  transform: scaleX(var(--r, 0));
+  transform-origin: left;
+  transition: transform 1.1s var(--ease-int);
+}
+
+.edu-foot[data-drawn='true'] .edu-foot__rule { --r: 1; }
+.edu-foot__rule--thin { opacity: 0.6; }
+
+.edu-foot__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  gap: clamp(36px, 5vw, 90px);
+  padding: clamp(40px, 6vh, 76px) 0;
+}
+
+.edu-foot__mark {
+  display: grid;
+  margin: 0;
+  font-size: clamp(2.2rem, 5.6vw, 4.6rem);
+  font-weight: 500;
+  line-height: 0.88;
+  letter-spacing: -0.045em;
+}
+
+/* Same correction as the CTA headline: at line-height 0.88 the descender of
+   the `g` sat below the border box, and the clip cut it off even at rest. */
+.edu-foot__mark span {
+  display: block;
+  padding: 0.18em 0.06em 0.22em;
+  margin: -0.18em -0.06em -0.22em;
+  clip-path: inset(0 0 calc((1 - var(--m, 0)) * 100%) 0);
+  transition: clip-path 0.9s var(--ease-int);
+}
+
+.edu-foot__mark span:last-child { transition-delay: 0.1s; }
+.edu-foot[data-drawn='true'] .edu-foot__mark span { --m: 1; }
+
+.edu-foot__line {
+  margin: clamp(22px, 2.6vw, 34px) 0 clamp(26px, 3.4vw, 44px);
+  font-size: 0.625rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--edu-ink-faint);
+}
+
+.edu-foot__identity .edu-dia--mark { max-width: 320px; }
+
+.edu-foot__nav {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(20px, 3vw, 48px);
+  align-content: start;
+}
+
+.edu-foot__title {
+  margin: 0 0 clamp(14px, 1.8vw, 22px);
+  font-size: 0.5625rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--edu-ink-faint);
+}
+
+.edu-foot__col ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: clamp(8px, 1vw, 13px);
+}
+
+.edu-foot__col a {
+  font-size: clamp(0.8125rem, 1vw, 0.9375rem);
+  color: var(--edu-ink-dim);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.edu-foot__col a:hover,
+.edu-foot__col a:focus-visible { color: var(--edu-ink); }
+
+.edu-foot__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-top: clamp(18px, 2.4vw, 28px);
+  font-size: 0.5625rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--edu-ink-faint);
+}
+
+.edu-foot__bottom p { margin: 0; }
+
+.edu-foot__bottom ul {
+  display: flex;
+  gap: clamp(14px, 2vw, 28px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.edu-foot__bottom a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.edu-foot__bottom a:hover { color: var(--edu-ink-dim); }
+
+/* ==================================================================
+   THE STAGE RELEASING
+   ==================================================================
+   Once the story is finished the fixed scene steps back and hands the page to
+   the close. It is not merely hidden: the canvas stops rendering entirely (see
+   `frameloop` in EducationExperience.jsx), because a WebGL scene nobody can
+   see is the most expensive thing on a page. */
+/* The scene is not faded away. It is COVERED: the call to action and the
+   footer are opaque and sit at z-index 6, above the fixed stage at 1, so
+   reaching the close occludes the tree rather than dissolving it. Fading it
+   meant watching the thing the whole page was about evaporate over the last
+   screen of scroll — the one moment it should simply still be there, behind
+   the page, where you left it.
+
+   It still stops rendering — see `frameloop` in EducationExperience.jsx — it
+   just stops rendering a frame nobody can see rather than a frame going
+   transparent. */
+.edu[data-past='true'] .edu__stage,
+.edu[data-past='true'] .edu__scrim {
+  pointer-events: none;
+}
+
+.edu[data-past='true'] .edu-rail-nav,
+.edu[data-past='true'] .edu-readout {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s linear;
+}
+
+/* ==================================================================
+   RESPONSIVE
+   ================================================================== */
+@media (max-width: 1080px) {
+  .edu-int__inner { grid-template-columns: minmax(0, 1fr); gap: clamp(22px, 4vw, 40px); }
+  /* The diagram becomes a footnote to the type rather than its equal. */
+  .edu-int__figure { max-width: 420px; }
+  .edu-int[data-int='disciplines'] .edu-int__figure { display: none; }
+  .edu-cta { grid-template-columns: minmax(0, 1fr); min-height: auto; }
+  .edu-cta__figure { max-width: 380px; }
+  .edu-foot__grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 760px) {
+  .edu-int__inner { padding: 0 20px; }
+  /* Four columns of list will not fit a phone, so the row recomposes into two
+     lines rather than shrinking into illegibility. */
+  .edu-list__row button {
+    grid-template-columns: 3rem minmax(0, 1fr);
+    row-gap: 2px;
+  }
+  .edu-list__name { grid-column: 2; }
+  .edu-list__meta { display: none; }
+  .edu-int__figure { max-width: 300px; }
+  .edu-int[data-int='campus'] .edu-int__figure { display: none; }
+  .edu-stats__item { grid-template-columns: auto minmax(0, 1fr); }
+  .edu-stats__value { font-size: clamp(2rem, calc(8vw + var(--lead) * 4vw), 4rem); }
+  .edu-foot__nav { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 30px; }
+  .edu-foot__bottom { flex-direction: column; align-items: flex-start; }
+}
+
+/* ==================================================================
+   REDUCED MOTION
+   ==================================================================
+   Every reveal still happens — the information and the structure are
+   unchanged — but nothing travels and nothing is clipped. The diagrams appear
+   complete rather than drawing, because a stroke animating across the screen
+   is exactly the kind of motion this preference is asking not to see. */
+@media (prefers-reduced-motion: reduce) {
+  .edu-int__sheet { transform: none; opacity: var(--sheet); }
+  .edu-int__hold { transform: none; }
+  .edu-int__line > span { transform: none; }
+  .edu-int__body,
+  .edu-list__row,
+  .edu-stats__item { transform: none; }
+  .edu-dia path,
+  .edu-dia rect,
+  .edu-dia circle { stroke-dashoffset: 0; }
+  .edu-dia__node,
+  .edu-dia__seed,
+  .edu-dia__pins circle { r: calc(var(--nr, 5) * 1px); }
+  .edu-cta__head { clip-path: none; transform: none; }
+  .edu-foot__mark span { clip-path: none; }
+  .edu-cta [class*='edu-dia'],
+  .edu-foot [class*='edu-dia'] { transition: none; }
+  .edu-list__word,
+  .edu-link i { transition: color 0.2s linear; }
+  .edu-list__row[data-on='true'] .edu-list__word { transform: none; }
+}
+
+/* The museum's title. Low and small: it names the chapter without competing
+   with the artifacts it introduces, which are the subject here. */
+.edu-museum__intro {
+  position: absolute;
+  left: clamp(20px, 5.6vw, 84px);
+  bottom: clamp(52px, 11vh, 118px);
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  max-width: 22ch;
+  font-size: clamp(0.9375rem, 1.5vw, 1.25rem);
+  font-weight: 400;
+  line-height: 1.24;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-shadow: 0 2px 26px rgba(6, 8, 13, 0.7);
+}
+
+.edu-museum__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  font-size: 0.5625rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.edu-museum__steps i { font-style: normal; }
+
+.edu-final__sub span { display: block; }
+
+@media (max-width: 760px) {
+  .edu-museum__intro { bottom: clamp(96px, 20vh, 150px); font-size: 0.875rem; }
+  .edu-museum__steps { display: none; }
+}
+
+
+/* ==================================================================
+   THE BAR OVER PAPER
+   ==================================================================
+   The header is set for a dark scene at every chapter, which stops being true
+   the moment an editorial sheet rises over it. The root carries which surface
+   is currently in front, and the bar takes its palette from that — one
+   attribute rather than a second header. */
+.edu-header .edu-mark,
+.edu-header .edu-nav__item,
+.edu-header .edu-menu-toggle span {
+  transition: color 0.45s ease, background-color 0.45s ease;
+}
+
+.edu[data-sheet='paper'] .edu-mark { color: #14171c; }
+.edu[data-sheet='paper'] .edu-nav__item { color: rgba(20, 23, 28, 0.62); }
+.edu[data-sheet='paper'] .edu-nav__item:hover,
+.edu[data-sheet='paper'] .edu-nav__item:focus-visible { color: #14171c; }
+.edu[data-sheet='paper'] .edu-menu-toggle span { background: #14171c; }
+
+/* The toggle carries a dark chip so it reads against the scene. Over paper
+   that chip is a black square in the corner of an editorial page. */
+.edu[data-sheet='paper'] .edu-menu-toggle {
+  background: rgba(20, 23, 28, 0.04);
+  border-color: rgba(20, 23, 28, 0.22);
+}
+
+.edu-menu-toggle {
+  transition: background-color 0.45s ease, border-color 0.45s ease;
+}
+
+.edu[data-sheet='paper'] .edu-header .c2snd {
+  --snd-ink: #14171c;
+  --snd-dim: rgba(20, 23, 28, 0.6);
+  --snd-line: rgba(20, 23, 28, 0.22);
+  --snd-accent: #b4763a;
+}
+
+/* The chapter rail and the pointer readout both describe the 3D world. While
+   a sheet is over it they are describing something nobody can see. */
+.edu[data-sheet='paper'] .edu-rail-nav,
+.edu[data-sheet='dark'] .edu-rail-nav,
+.edu[data-sheet='paper'] .edu-readout,
+.edu[data-sheet='dark'] .edu-readout,
+.edu[data-sheet='paper'] .edu-cursor,
+.edu[data-sheet='dark'] .edu-cursor {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s linear;
+}
+
+.edu-int__note--tap { display: none; }
+
+@media (hover: none) {
+  .edu-int__note--hover { display: none; }
+  .edu-int__note--tap { display: block; }
 }

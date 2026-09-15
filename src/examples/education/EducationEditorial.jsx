@@ -1,4 +1,5 @@
 import { BRAND, CAMPUS_FACTS, DISCIPLINES, RAIL_WORDS } from './chapters.js'
+import { FUTURE, MUSEUM_INTRO } from './site.js'
 
 /**
  * Every word on the page, composed differently in every chapter.
@@ -129,6 +130,19 @@ function Museum({ active, stop }) {
           with no clear background to set type against, so occluding it just
           shreds the word into fragments. Set in front instead and ghosted back,
           so the canopy reads through it rather than over it. */}
+      {/* The chapter's own title, set small and low so it names the section
+          without competing with the artifacts it is introducing. */}
+      <div className="edu-layer edu-layer--front" data-active={on(0)}>
+        <p className="edu-museum__intro">
+          <span>{MUSEUM_INTRO.headline}</span>
+          <span className="edu-museum__steps">
+            {MUSEUM_INTRO.steps.map((step) => (
+              <i key={step}>{step}</i>
+            ))}
+          </span>
+        </p>
+      </div>
+
       <div className="edu-layer edu-layer--front" data-active={on(0)}>
         <p className="edu-verb">Build</p>
       </div>
@@ -244,11 +258,7 @@ function Reveal({ active }) {
 }
 
 function Future({ active, onNavigate }) {
-  const actions = [
-    { label: 'Explore programmes', target: 'branches' },
-    { label: 'Apply', target: 'future' },
-    { label: 'Visit campus', target: 'reveal' },
-  ]
+  const actions = FUTURE.actions
 
   // One column, in front of the scene rather than behind it. The closing shot
   // is the campus filling the frame edge to edge, so a headline sitting behind
@@ -262,10 +272,14 @@ function Future({ active, onNavigate }) {
 
       <div className="edu-final">
         <p className="edu-final__type">
-          <span>Your next</span>
-          <span>chapter</span>
+          <span>Build what</span>
+          <span>comes next.</span>
         </p>
-        <p className="edu-final__sub">Starts here.</p>
+        <p className="edu-final__sub">
+          {FUTURE.body.map((line) => (
+            <span key={line}>{line}</span>
+          ))}
+        </p>
 
         <div className="edu-actions">
           {actions.map((action) => (

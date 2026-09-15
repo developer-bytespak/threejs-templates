@@ -1,4 +1,5 @@
 import { BRAND, CHAPTERS, NAV } from './chapters.js'
+import SoundButton from '../../audio/SoundButton.jsx'
 
 /**
  * The persistent furniture: a mark, a short nav, the chapter rail and the
@@ -34,6 +35,10 @@ function EducationChrome({ chapter, hover, menuOpen, onToggleMenu, onNavigate })
             </button>
           ))}
         </nav>
+
+        {/* Last in the bar, past the navigation — the same position it holds
+            on /construction-two. It is a utility switch, not a section. */}
+        <SoundButton />
 
         <button
           type="button"

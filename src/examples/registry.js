@@ -11,10 +11,10 @@ export const EXAMPLES = [
     id: 'construction',
     path: '/construction',
     title: 'Construction',
-    tagline: 'A building, taken apart',
+    tagline: 'Before the building, the ground',
     description:
-      'A scroll-driven exploded view of a nine-storey building. Eight systems — foundation, columns, beams, slabs, walls, glazing, facade and roof — separate in sequence, hold as an architectural diagram, then reassemble. The scroll sections carry no copy: this one is a template waiting for content.',
-    tags: ['glTF', 'Scroll choreography', 'Exploded view', 'Layer hover'],
+      'A scroll-driven site sequence in one continuous shot. An empty plot is surveyed, the building is set out stake by stake and line by line, and then the ground is cut away along the footprint that was just drawn — revealing the excavation, and an excavator already working in it.',
+    tags: ['glTF', 'Scroll choreography', 'Dissolve reveal', 'Rigged machine'],
     poster: '/previews/construction.jpg',
     accent: '#0b0d11',
   },

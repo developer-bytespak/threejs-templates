@@ -1,0 +1,25 @@
+== SETUP: dig, rebar, formwork ==
+  ok   excavation complete: 5
+  ok   foundation complete: 5
+== THE POUR: one scroll, then nothing ==
+  ok   pour apparatus left in the scene at all: 0
+       (the 3 pipe stacks by the fence are site dressing and stay: pipe_rebar_bundle, pipe_stack_01, pipe_stack_02)
+  ok   no pouring stream is visible on any frame: 0
+  ok   nothing but the fill level ever moves: 0
+  ok   the level never drops while filling: 0
+  ok   nothing appears already part full: 0
+  ok   all five events, in order: 1,2,3,4,5
+  ok   the pour finished on its own: 5
+  ok   every pour in, nothing half filled: 20/0
+  ok   settled to exactly the modelled level: 1/1
+  ok   and the settle is the only thing that lowered it: 0
+       3.67s for the whole pour
+== BACKWARDS ==
+  ok   every event reversed, in order: 5,4,3,2,1
+  ok   back to an empty form: 0/0
+  ok   no stream on the way back either: 0
+  ok   the formwork and the excavation are untouched: 5/5
+
+CONSOLE:
+console.error Failed to load resource: the server responded with a status of 404 (Not Found)
+ALL PASSED

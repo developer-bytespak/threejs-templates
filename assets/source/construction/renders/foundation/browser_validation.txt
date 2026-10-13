@@ -1,0 +1,71 @@
+== 1. THE PAGE OPENS ON A BARE SITE ==
+  ok   foundation stage: 0
+  ok   nothing built: 00000000000000000000000000000000000000000000000000000000000000000
+  ok   no event in flight: false
+== 2. THE FOUNDATION CANNOT EXIST BEFORE THE HOLE ==
+  ok   frames with steel in an unfinished hole: 0
+  ok   the dig finished: 5
+       the dig let the reader down at scroll 0.660
+== 3. ONE SCROLL, THEN LET GO — EACH STAGE FINISHES ON ITS OWN ==
+  ok   stage 1 asked for on the frame the trigger was crossed: 1
+  ok   stage 1 completed with no further scroll: 1
+  ok   stage 1 length (s): 0.7
+  ok   stage 1 left nothing half built: 0
+  ok   stage 2 asked for on the frame the trigger was crossed: 2
+  ok   stage 2 completed with no further scroll: 2
+  ok   stage 2 length (s): 0.7
+  ok   stage 2 left nothing half built: 0
+  ok   stage 3 asked for on the frame the trigger was crossed: 3
+  ok   stage 3 completed with no further scroll: 3
+  ok   stage 3 length (s): 0.7
+  ok   stage 3 left nothing half built: 0
+  ok   stage 4 asked for on the frame the trigger was crossed: 4
+  ok   stage 4 completed with no further scroll: 4
+  ok   stage 4 length (s): 0.7
+  ok   stage 4 left nothing half built: 0
+  ok   stage 5 asked for on the frame the trigger was crossed: 5
+  ok   stage 5 completed with no further scroll: 5
+  ok   stage 5 length (s): 0.7
+  ok   stage 5 left nothing half built: 0
+  ok   all five built: 11111111111111111111111111111111111111111111111111111111111111111
+== 4. THE EVENT SURVIVES A READER WHO KEEPS GOING ==
+       mid-flight: stage 0 -> 1, clock 0.134s
+  ok   still lands exactly on the stage the reader is standing in: 1
+== 5. A FLING PLAYS EVERY STAGE, IN ORDER ==
+  ok   every stage played, in order: 1,2,3,4,5
+  ok   and all of it is standing: 11111111111111111111111111111111111111111111111111111111111111111
+== 6. BACKWARD SCROLL PLAYS THE SAME EVENTS IN REVERSE ==
+  ok   scrolling back past trigger 5 took stage 5 out: 4
+  ok     and left nothing half built: 0
+  ok   scrolling back past trigger 4 took stage 4 out: 3
+  ok     and left nothing half built: 0
+  ok   scrolling back past trigger 3 took stage 3 out: 2
+  ok     and left nothing half built: 0
+  ok   scrolling back past trigger 2 took stage 2 out: 1
+  ok     and left nothing half built: 0
+  ok   scrolling back past trigger 1 took stage 1 out: 0
+  ok     and left nothing half built: 0
+  ok   the pit is empty again: 00000000000000000000000000000000000000000000000000000000000000000
+  ok   the excavation is untouched by any of it: 5
+== 7. TURN ROUND MID-EVENT, BOTH WAYS ==
+       forward, interrupted at clock 0.117s of 0.609s
+  ok   forward -> reverse lands clean: 0/0
+       reverse, interrupted at stage 5 clock 0.467s
+  ok   reverse -> forward lands clean: 5/0
+== 8. REPETITION IS EXACT ==
+  ok   four round trips land on byte-identical transforms: true
+  ok   and so does coming back out: true
+== 9. FILLING THE HOLE IN TAKES THE STEEL WITH IT ==
+  ok   never any steel standing in a pit being filled: 0
+  ok   foundation back to nothing: 0
+== 10. REDUCED MOTION ==
+  ok   lands the finished state: 5
+  ok   with no event: false
+  ok   and nothing part way: 0
+== 11. COST ==
+       410.5 ms/frame idle, 746.9 ms/frame with the foundation building (software GL)
+       65 components, 11 of them in the event in flight
+
+CONSOLE:
+console.error Failed to load resource: the server responded with a status of 404 (Not Found)
+ALL PASSED
